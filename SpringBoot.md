@@ -293,39 +293,313 @@ public class HelloLombok {
 
 ## 스프링 부트 프로젝트의 구조 이해
 
+sbb 프로젝트에 HelloController.java와 HelloLombok.java 파일을 생성하였다. 자바 파일을 생성하거나 그레이들 파일을 수정하면서 살펴보긴 했지만 지금보다 규모가 더 큰 프로젝트를 만들려면 프로젝트 구조를 자세히 알고 이해해야 한다. 이번에는 스프링 부트 프로젝트의 구조와 파일에 대해서 알아보자. 먼저, STS 화면 왼쪽에 있는 스프링 부트 프로젝트의 전체 구조부터 살펴본다.
+
+![image-20250410153358187](./assets/image-20250410153358187.png)
+
 ### src/main/java 디렉터리 
+
+자바 파일을 저장하는 공간이다.
 
 #### com.mysite.sbb 패키지
 
+이 패키지는 SBB의 자바 파일을 저장하는 공간이다. HelloController.java와 같은 스프링 부트의 컨트롤러, 폼과 DTO, 데이터베이스 처리를 위한 엔티티, 서비스 등의 자바 파일이 이 곳에 위치한다.
+
 #### SbbApplication.java 파일
+
+모든 프로그램에는 프로그램의 시작을 담당하는 파일이 있다. 스프링 부트로 만든 프로그램(스프링 부트 애플리케이션)에도 시작을 담당하는 파일이 있는데 그 파일이 바로 '프로젝트명 + Application.java' 파일이다. 스프링 부트 프로젝트를 생성할 때 프로젝트명으로 'sbb'라는 이름을 입력하면 다음과 같이 SbbApplication.java 파일이 자동으로 생성된다.
+
+```java
+package com.mysite.sbb;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SbbApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SbbApplication.class, args);
+	}
+
+}
+```
+
+SbbApplication 클래스에는 반드시 @SpringBootApplication 애너테이션이 적용되어 있어야 한다. @SpringBootApplication 애너테이션을 통해 스프링 부트 애플리케이션을 시작할 수 있다.
 
 ### src/main/resources 디렉터리 
 
+자바 파일을 제외한 HTML, CSS, JS, 환경 파일 등을 저장하는 공간이다.
+
+cf) : 환경파일이란?
+
+프로젝트의 설정 정보를 저장하는 파일이다.
+
 #### templates 디렉터리
+
+src/main/resources 디렉터리의 하위 디렉터리인 templates에는 템플릿 파일을 저장한다. 템플릿 파일은 자바 코드를 삽입할 수 있는 HTML 형식의 파일로, 스프링 부트에서 생성한 자바 객체를 HTML 형태로 출력할 수 있다. templates에는 SBB 게시판 서비스에 필요한 '질문 목록', '질문 상세' 등의 웹 페이지를 구성하는 HTML 파일을 저장한다.
 
 #### static 디렉터리
 
+static 디렉터리에는 sbb 프로젝트의 스타일시트(css 파일), 자바스크립트(js 파일) 그리고 이미지 파일(jpg 파일, png 파일 등) 등을 저장한다.
+
 #### application.properties 파일
+
+application.properties 파일은 sbb 프로젝트의 환경을 설정한다. sbb 프로젝트의 환경 변수, 데이터베이스 등의 설정을 이 파일에 저장한다.
 
 ### src/test/java 디렉터리
 
+sbb 프로젝트에서 작성한 파일을 테스트하는 코드를 저장하는 공간이다. JUnit과 스프링 부트의 테스트 도구를 사용하여 서버를 실행하지 않은 상태에서 src/main/java 디렉터리에 작성한 코드를 테스트할 수 있다.
+
 ### build.gradle 파일
+
+build.gradle은 그레이들이 사용하는 환경 파일이다. 그레이들은 그루비를 기반으로 한 빌드 도구로 Ant, Maven과 같은 이전 세대의 단점을 보완하고 장점을 취합하여 만들었다. build.gradle 파일에는 프로젝트에 필요한 플러그인과 라이브러리를 설치하기 위한 내용을 작성한다.
+
+cf) : 그루비란?
+
+그레이들 빌드 스크립트를 작성하는 데 사용하는 스크립트 언어이다.
+
+cf) : 빌드 도구의 쓰임
+
+소스 코드를 컴파일하고 필요한 라이브러리를 내려받을 때 사용한다. SBB 프로젝트를 완성하면 단 한 개의 jar 파일로 패키징하여 서버에 배포할 수 있는데 이때에도 역시 빌드 도구를 사용한다.
 
 ## 간단한 웹 프로그램 만들기
 
+웹 브라우저에서 http://localhost:8080/sbb 페이지를 요청했을 때 '안녕하세요 sbb에 오신 것을 환영합니다.'라는 문자열을 출력하도록 만든다.
+
 ### URL 매핑과 컨트롤러
+
+1. STS의 왼쪽 하단에 있는 Boot Dashboard에서 시작 버튼을 눌러 로컬 서버를 구동한다.
+
+2. http://localhost:8080/sbb 페이지를 요청한다.
+
+   아마 URL을 입력하면 오류를 알리는 화면이 등장한다. 여기서 404는 HTTP 오류 코드 중 하나로, 브라우저가 요청한 페이지를 찾을 수 없다는 의미이다. 즉, 스프링 부트 서버가 http://localhost:8080/sbb라는 요청을 해석할 수 없기 때문에 이와 같은 오류가 발생한 것이다.
+
+   그렇다면 이러한 오류를 해결하기 위해 어떻게 해야 하는가? 컨트롤러를 작성하여 /sbb URL에 대한 매핑을 추가하면 해결할 수 있다. 브라우저와 같은 클라이언트의 페이지 요청이 발생하면 스프링 부트는 가장 먼저 컨트롤러에 등록된 URL 매핑을 찾고, 해당 URL 매핑을 발견하면 URL 매핑과 연결된 메서드를 실행한다.
 
 ### 컨트롤러 만들어서 URL 매핑하기
 
+웹 브라우저와 같은 클라이언트의 요청이 발생하면 서버 역할을 하는 스프링 부트가 응답해야 한다. 그러기 위해서는 URL이 스프링 부트에 매핑되어 있어야 하고 이를 위해서는 먼저 컨트롤러를 만들어야 한다.
+
+1. 컨트롤러를 작성하여 URL 매핑을 추가하기 위해 다음과 같이 src/main/java 디렉터리의 com.mysite.sbb 패키지에 MainController.java 파일을 작성한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.GetMapping;
+   
+   @Controller
+   public class MainController {
+   	@GetMapping("/sbb")
+   	public void index() {
+   		System.out.println("index");
+   	}
+   }
+   ```
+
+   MainController 클래스에 @Controller 어노테이션을 적용하면 MainController 클래스는 스프링 부트의 컨트롤러가 된다. 그리고 index 메서드의 @GetMapping 어노테이션은 요청된 URL(/sbb)과의 매핑을 담당한다. 브라우저가 URL을 요청하면 스프링 부트는 요청 페이지와 매핑되는 메서드를 찾아 실행한다.
+
+   정리하자면, 스프링 부트는 웹 브라우저로부터 http://localhost:8080/sbb 요청이 발생하면 /sbb URL과 매핑되는 index 메서드릴 MainController 클래스에서 찾아 실행한다.
+
+2. 다시 http://localhost:8080/sbb URL을 호출해 본다.
+
+   이번에도 오류가 발생한다. 하지만 404가 아닌 500 오류 코드로 바뀐 것을 확인할 수 있다. 브라우저가 http://localhost:8080/sbb 요청했을 때 MainController 클래스의 index 메서드가 호출되긴 했지만 오류가 발생하였다. 원래 URL과 매핑된 메서드는 결괏값을 리턴해야 하는데 아무 값도 리턴하지 않아 이와 같은 오류가 발생한 것이다. 즉, 오류를 해결하려면 클라이언트(브라우저)로 응답을 리턴해야 한다.
+
+3. 다음과 같이 MainController.java를 수정한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   @Controller
+   public class MainController {
+   	@GetMapping("/sbb")
+   	@ResponseBody
+   	public String index() {
+   		return "index";
+   	}
+   }
+   ```
+
+   응답으로 'index'라는 문자열을 브라우저에 출력하기 위해 index 메서드의 리턴 자료형을 String으로 변경하고 문자열 'index'를 리턴했다. 여기서 @ResponseBody 어노테이션은 URL 요청에 대한 응답으로 문자열을 리턴하라는 의미로 쓰였다.
+
+4. 오류가 해결되었다.
+
+   ![image-20250410160713502](./assets/image-20250410160713502.png)
+
+5. 이번에는 MainController.java를 수정하여 문자열 'index' 대신 '안녕하세요 sbb에 오신 것을 환영합니다.'를 출력한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   @Controller
+   public class MainController {
+   	@GetMapping("/sbb")
+   	@ResponseBody
+   	public String index() {
+   		return "안녕하세요 sbb에 오신 것을 환영한다.";
+   	}
+   }
+   ```
+
+6. 브라우저에 변경한 문자열이 잘 출력된다.
+
+   ![image-20250410160850519](./assets/image-20250410160850519.png)
+
 ## JAP로 데이터베이스 사용하기
+
+만들어 볼 SBB는 방문자들이 질문과 답변을 남길 수 있는 게시판 서비스이다. SBB 게시판의 사용자가 질문이나 답변을 작성하면 데이터가 생성되는데, 이러한 데이터를 관리하려면 저장, 조회, 수정하는 등의 기능을 구현해야 한다. 우리가 만들 SBB뿐만 아니라 대부분의 웹 서비스들은 생성되는 데이터를 관리하고 처리하기 위해 DB를 사용한다. DB는 데이터를 모으고 관리하는 저장소라고 할 수 있다.
+
+여기서 문제는 DB를 관리하려면 SQL이라는 언어를 사용해야한다는 점이다. 스프링 부트와 달리 DB는 자바를 이해하지 못한다. 하지만 ORM(Object Relational Mapping)이라는 도구를 사용하면 자바 문법으로도 DB를 다룰 수 있다. 즉, ORM을 이용하면 개발자는 SQL을 직접 작성하지 않아도 DB의 데이터를 처리할 수 있다.
 
 ### ORM과 JPA 이해하기
 
 #### ORM이란?
 
+먼저, ORM에 대해 알아본다. 앞서 ORM은 SQL을 사용하지 않고 DB를 관리할 수 있는 도구라고 설명했다. ORM은 DB의 테이블을 자바 클래스로 만들어 관리할 수 있다. SQL의 쿼리문과 ORM 코드(즉, 자바로 작성된 코드)를 비교하여 ORM을 좀 더 이해해본다. 다음과 같은 'question'이란 이름의 테이블에 데이터를 입력한다고 가정한다. 그리고 question 테이블에는 id, subject, content라는 열이 있다고 가정한다.
+
+| id   | subject | content    |
+| ---- | ------- | ---------- |
+| 1    | 안녕    | 인사드림   |
+| 2    | 질문    | ORM이 궁금 |
+| ...  | ...     | ...        |
+
+이렇게 question 테이블에 데이터를 저장하려면 SQL 쿼리문은 다음과 같이 작성한다.
+
+```sql
+insert into question(id, subject, content) values (1, '안녕', '인사드림');
+insert into question(id, subject, content) values (2, '질문', 'ORM이 궁금');
+```
+
+하지만 ORM을 사용하면 이러한 쿼리문 대신 자바 코드로 다음과 같이 작성할 수 있다.
+
+```java
+Question q1 = new Question();
+q1.setId(1);
+q1.setSubject("안녕");
+q1.setContent("인사드림");
+this.questionRepository.save(q1);
+
+Question q2 = new Question();
+q2.setId(2);
+q2.setSubject("질문");
+q2.setContent("ORM이 궁금");
+this.questionRepository.save(q2);
+```
+
+이와 같이 SQL의 쿼리문과 ORM 코드를 단순히 비교하면 ORM 코드의 양이 더 많아 보이지만 별도의 SQL문을 사용하지 않아도 DB를 사용할 수 있기에 편리하다. ORM 코드를 살펴보면 Question은 자바 클래스이며, 이처럼 데이터를 관리하는 데 사용하는 ORM의 자바 클래스를 엔티티라고 한다. 엔티티는 DB의 테이블과 매핑되는 자바 클래스를 말한다.
+
+ORM을 이용하면 MySQL, 오라클 DB, MS SQL과 같은 DBMS의 종류에 관계 없이 일관된 자바 코드를 사용할 수 있어서 프로그램을 유지보수하기가 편리하다. 또한 코드 내부에서 안정적인 SQL 쿼리문을 자동으로 생성해 주므로 개발자가 달라도 통일된 쿼리문을 작성할 수 있고, 오류 발생률도 줄일 수 있다.
+
 #### JPA란?
 
+스프링 부트는 JPA를 사용하여 DB를 관리한다. 스프링 부트는 JPA를 ORM의 기술 표준으로 사용한다. JPA는 인터페이스 모음이므로 이 인터페이스를 구현한 실제 클래스가 필요하다. JPA를 구현한 실제 클래스에는 대표적으로 하이버네이트가 있다. 
+
+정리하자면, 하이버네이트는 JPA의 인터페이스를 구현한 실제 클래스이자 자바의 ORM 프레임워크로 스프링 부트에서 DB를 관리하기 쉽게 도와준다. 앞으로 만들어갈 SBB도 JPA와 하이버네이트 조합으로 DB를 관리한다.
+
 ### 데이터베이스 설치하기
+
+JPA를 사용해 데이터를 관리하기 위해 먼저 DB를 설치한다. 
+
+1. build.gradle 파일에 다음과 같이 dependencies를 추가한다.
+
+   ```
+   ...
+   dependencies {
+   	implementation 'org.springframework.boot:spring-boot-starter-web'
+   	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+   	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+   	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+   	compileOnly 'org.projectlombok:lombok'
+   	annotationProcessor 'org.projectlombok:lombok'
+   	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+   }
+   ...
+   ```
+
+   그 다음 build.gradle 파일을 선택한 후 마우스 오른쪽 버튼을 눌러 Gradle - Refresh Gradle Project를 클릭하여 필요한 라이브러리를 설치한다.
+
+2. 설치한 DB를 사용하려면 src/main/resources 디렉터리의 application.properties 파일에 새로운 설정을 추가해야 한다. 다음과 같이 application.properties 파일을 작성한다.
+
+   ```
+   ...
+   
+   #DATABASE
+   spring.datasource.url=jdbc:oracle:thin:@localhost:1521/orcl
+   spring.datasource.username=C##SCOTT
+   spring.datasource.password=0000
+   spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+   
+   ...
+   ```
+
+   * spring.datasource.url=jdbc:oracle:thin:@localhost:1521/orcl
+
+     DB에 접속하기 위한 URL 경로이다.
+
+     * jdbc
+
+       DB 드라이버를 의미한다. 다른 드라이버(예를 들면 ODBC)를 사용한다면 해당 드라이버를 기입한다.
+
+     * oracle
+
+       사용하려는 DB가 Oracle임을 나타낸다.
+
+     * thin
+
+       Thin Driver를 사용한다는 것을 의미한다.
+
+       Thin Driver는 Java로 작성된 경량 드라이버로, 네트워크를 통해 직접 DB 서버에 접속한다.
+
+       클라이언트 쪽에 추가적인 네이티브 라이브러리를 설치하지 않아도 되는 장점이 있다.
+
+     * @
+
+       드라이버가 연결 정보(host, port, database)를 포함하는 부분이 시작된다는 것을 나타낸다.
+
+     * localhost
+
+       DB 서버의 호스트 이름 또는 IP 주소를 나타낸다.
+
+       여기서는 `localhost`로 로컬 컴퓨터(자기 자신의 머신)를 가리킨다.
+
+       원격 서버에 연결하려면 해당 서버의 IP 주소나 도메인 이름으로 바꿔야 한다.
+
+     * 1521
+
+       DB 서버의 포트 번호이다.
+
+       다른 포트를 사용할 경우 해당 번호로 변경해야 한다.
+
+     * orcl
+
+       연결하려는 DB의 서비스 이름(Service Name) 또는 SID를 나타낸다.
+
+       환경에 적합한 서비스 이름을 사용해야 한다.
+
+   * spring.datasource.username=C##SCOTT
+
+     DB 서버의 사용자 이름(계정)이다.
+
+     C##은 Oracle 12d 부터 사용되는 구문 규칙이다.
+
+   * spring.datasource.password=0000
+
+     DB 서버의 사용자 패스워드이다.
+
+   * spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+     Oracle JDBC 드라이버 클래스 이름이다(oracle.jdbc.OracleDriver).
+
+3. spring.datasource.url에 설정한 경로에 해당하는 DB 파일을 만들어야 한다. 
 
 ### JPA 환경 설정하기
 
