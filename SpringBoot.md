@@ -599,25 +599,247 @@ JPA를 사용해 데이터를 관리하기 위해 먼저 DB를 설치한다.
 
      Oracle JDBC 드라이버 클래스 이름이다(oracle.jdbc.OracleDriver).
 
-3. spring.datasource.url에 설정한 경로에 해당하는 DB 파일을 만들어야 한다. 
+3. spring.datasource.url에 설정한 경로에 해당하는 DB 파일을 만들어야 한다. 스프링 부트에서 Oracle DB는 DB 경로를 따로 설정하지 않는다. 대신, Oracle DB에서 DB 경로를 직접 설정을 해야 한다.
 
 ### JPA 환경 설정하기
 
+DB를 사용할 준비가 끝났다. 이제 자바 프로그램에서 DB를 사용할 수 있게 해야 한다. 자바 프로그램에서 DB에 데이터를 저장하거나 조회하려면 JPA를 사용해야 한다. 하지만 JPA를 사용하려면 먼저 준비 작업이 필요하다.
+
+1. 다음처럼 build.gradle 파일을 수정한다.
+
+   ```
+   ...
+   
+   dependencies {
+   	implementation 'org.springframework.boot:spring-boot-starter-web'
+   	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+   	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+   	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+   	compileOnly 'org.projectlombok:lombok'
+   	annotationProcessor 'org.projectlombok:lombok'
+   	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+   	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+   }
+   
+   ...
+   ```
+
+   이전과 마찬가지로 build.gradle 파일을 선택한 후 마우스 오른쪽 버튼을 눌러 Gradle - Refresh Gradle Project를 클릭하여 변경 사항을 적용하면 JPA 라이브러리가 설치된다.
+
+   cf) : implementation이란?
+
+   build.gradle 파일에서 작성한 implementation은 필요한 라이브러리 설치를 위해 가장 일반적으로 사용하는 설정이다. implementation은 해당 라이브러리가 변경되더라도 이 라이브러리와 연관된 모든 모듈을 컴파일하지 않고 변경된 내용과 관련이 있는 모듈만 컴파일하므로 프로젝트를 리빌드하는 속도가 빠르다.
+
+2. JPA 설정을 위해 이번에는 application.properties 파일을 다음과 같이 수정한다.
+
+   ```
+   #JPA
+   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.Oracle21cDialect
+   spring.jpa.hibernate.ddl-auto=update
+   ```
+
+   추가한 설정 항목을 살펴본다.
+
+   * spring.jpa.properties.hibernate.dialect
+
+     스프링 부트와 하이버네이트를 함께 사용할 때 필요한 설정 항목이다. 표준 SQL이 아닌 하이버네이트만의 SQL을 사용할 때 필요한 항목으로 하이버네이트의 org.hibernate.dialect.Oracle21cDialect 클래스를 설정했다.
+
+   * spring.jpa.hibernate.ddl-auto
+
+     엔티티를 기준으로 데이터의 테이블을 생성하는 규칙을 설정한다.
+
+   cf) : spring.jpa.hibernate.ddl-auto의 규칙을 더 알아본다.
+
+   * none : 엔티티가 변경되더라도 데이터베이스를 변경하지 않는다.
+   * update : 엔티티의 변경된 부분만 데이터베이스에 적용한다.
+   * validate : 엔티티와 테이블 간에 차이점이 있는지 검사만 한다.
+   * create : 스프링 부트 서버를 시작할 때 테이블을 모두 삭제한 후 다시 생성한다.
+   * create-drop : create와 동일하지만 스프링 부트 서버를 종료할 때에도 테이블을 모두 삭제한다.
+
+   개발 환경에서는 보통 update 모드를 사용하고, 운영 환경에서는 none 또는 validate를 주로 사용한다.
+
 ## 엔티티로 테이블 매핑하기
+
+앞서 JPA로 DB를 사용할 준비를 마쳤다. JPA를 사용하려면 반드시 엔티티를 이해해야 한다. 그전에 DB의 구성 요소를 살펴보고 이어 엔티티에 대해 알아본다.
 
 ### 데이터베이스 구성 요소 살펴보기
 
 ### 엔티티 속성 구성하기
 
+SBB에 사용할 엔티티를 만들어 보며 개념을 이해한다. 엔티티는 DB 테이블과 매핑되는 자바 클래스를 말한다. 우리가 만들고 있는 SBB는 질문과 답변을 할 수 있는 게시판 서비스이므로 SBB의 질문과 답변 데이터를 저장할 DB 테이블과 매핑되는 질문과 답변 엔티티가 있어야 한다.
+
+※ 엔티티를 모델 또는 도메인 모델이라고도 한다. 여기에서는 이것을 구분하지 않고 테이블과 매핑되는 클래스를 모두 엔티티라 지칭한다.
+
+그렇다면 먼저, 만들어야 할 질문(Question)과 답변(Answer) 엔티티에는 각각 어떤 속성들이 필요한지 생각한다. 우리가 만들려는 SBB 게시판은 사용자가 질문을 남기고 답변을 받을 수 있는 웹 서비스이다. 이와 같은 서비스를 제공하기 위해서는 사용자가 입력한 질문을 저장해야 하고, 질문의 제목과 내용을 담을 수 있는 항목이 필요하다. 그러므로 질문의 '제목'과 '내용' 등을 엔티티의 속성으로 추가해야 한다. 질문 엔티티에는 다음과 같은 속성이 필요하고, 이러한 엔티티의 속성은 테이블의 열과 매핑이 된다.
+
+| 속성 이름  | 설명                      |
+| ---------- | ------------------------- |
+| id         | 질문 데이터의 고유 번호   |
+| subject    | 질문 데이터의 제목        |
+| content    | 질문 데이터의 내용        |
+| createData | 질문 데이터를 작성한 일시 |
+
+마찬가지로 답변 엔티티에는 다음과 같은 속성이 필요하다.
+
+| 속성 이름  | 설명                      |
+| ---------- | ------------------------- |
+| id         | 답변 데이터의 고유 번호   |
+| question   | 질문 데이터               |
+| content    | 답변 데이터의 내용        |
+| createData | 답변 데이터를 작성한 일시 |
+
+이렇게 생각한 속성을 바탕으로 질문과 답변에 해당되는 엔티티를 작성한다.
+
 ### 질문 엔티티 만들기
+
+다음과 같이 질문 엔티티를 만든다. 먼저 src/main/java 디렉터리의 com.mysite.sbb 패키지에 Question.java 파일을 작성해 Question 클래스를 만든다.
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Entity
+public class Question {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer id;
+	
+	@Column(length = 200)
+	private String subject;
+	
+	@Column(columnDefinition = "TEXT")
+	private String content;
+	
+	private LocalDateTime createDate;
+}
+```
+
+엔티티로 만들기 위해 Question 클래스에 @Entity 어노테이션을 적용했다. 이와 같이 @Entity 어노테이션을 적용해야 스프링 부트가 Question 클래스를 엔티티로 인식한다.
+
+그리고 엔티티의 속성으로 고유 번호(id), 제목(subject), 내용(content), 작성 일시(createDate)를 작성했다. 각 속성에는 Id, GeneratedValue, Column과 같은 어노테이션이 적용되어 있는데 하나씩 살펴본다.
 
 #### @Id 어노테이션
 
+id 속성에 적용한 @Id 어노테이션은 id 속성을 기본키로 지정한다. id 속성을 기본키로 지정한 이유는 id 속성의 고유 번호들은 엔티티에서 각 데이터들을 구분하는 유효한 값으로, 중복되면 안 되기 때문이다.
+
 #### @GeneratedValue 어노테이션
+
+@GeneratedValue 어노테이션을 적용하면 데이터를 저장할 때 해당 속성에 값을 일일이 입력하지 않아도 자동으로 1씩 증가하여 저장된다. strategy = GenerationType.IDENTITY는 고유한 번호를 생성하는 방법을 지정하는 부분으로, GenerationType.IDENTITY는 해당 속성만 별도로 번호가 차례대로 늘어나도록 할 때 사용한다.
+
+※ strategy 옵션을 생략한다면 @GeneratedValue 어노테이션이 지정된 모든 속성에 번호를 차례로 생성하므로 순서가 일정한 고유 번호를 가질 수 없게 된다. 이러한 이유로 보통 strategy = GenerationType.IDENTITY를 많이 사용한다.
 
 #### @Column 어노테이션
 
+엔티티의 속성은 테이브릐 열 이름과 일치하는데 열의 세부 설정을 위해 @Column 어노테이션을 사용한다. length는 열의 길이를 설정할 때 사용하고(여기서는 열의 길이를 200으로 정했다), columnDefinition은 열 데이터의 유형이나 성격을 정의할 때 사용한다. 여기서 columnDefinition = "TEXT"는 말 그대로 '텍스트'를 열 데이터로 넣을 수 있음을 의미하고, 글자 수를 제한할 수 없는 경우에 사용한다.
+
+※ 엔티티의 속성은 @Column 어노테이션을 사용하지 않더라도 테이블의 열로 인식한다. 테이블의 열로 인식하고 싶지 않다면 @Transient 어노테이션을 사용한다. @Transient 어노테이션은 엔티티의 속성을 테이블의 열로 만들지 않고 클래스의 속성 기능으로만 사용하고자 할 때 쓴다.
+
+cf) : 엔티티의 속성 이름과 테이블의 열 이름의 차이
+
+Question 엔티티에서 작성 일시에 해당하는 createDate 속성의 이름은 DB 테이블에서는 create_date라는 열 이름으로 설정된다. 즉, createDate 처럼 카멜케이스 형식의 이름은 create_date처럼 모두 소문자로 변경되고 단어가 언더바로 구분되어 DB 테이블의 열 이름이 된다.
+
+cf) : 엔티티를 만들 때 Setter 메서드는 사용하지 않는다.
+
+일반적으로 엔티티를 만들 때에는 Setter 메서드를 사용하는것을 지양한다. 왜냐하면 엔티티는 DB와 바로 연결되므로 데이터를 자유롭게 변경할 수 있는 Setter 메서드를 허용하는 것이 안전하지 않다고 판단하기 때문이다. 그렇다면 Setter 메서드 없이 어떻게 엔티티에 값을 저장할 수 있을까?
+
+엔티티는 생성자에 의해서만 엔티티의 값을 저장할 수 있게 하고, 데이터를 변경해야 할 경우에는 메서드를 추가로 작성하면 된다. 
+
 ### 답변 엔티티 만들기
+
+1. 답변 엔티티를 만든다. 먼저 src/main/java 디렉터리의 com.mysite.sbb 패키지에 Answer.java 파일을 작성해 Answer 클래스를 만든다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   
+   import jakarta.persistence.Column;
+   import jakarta.persistence.Entity;
+   import jakarta.persistence.GeneratedValue;
+   import jakarta.persistence.GenerationType;
+   import jakarta.persistence.Id;
+   import lombok.Getter;
+   import lombok.Setter;
+   
+   @Getter
+   @Setter
+   @Entity
+   public class Answer {
+   	@Id
+   	@GeneratedValue(strategy = GenerationType.IDENTITY)
+   	private Integer id;
+   	
+   	@Column(columnDefinition = "TEXT")
+   	private String content;
+   	
+   	private LocalDateTime createDate;
+   	
+   	private Question question;
+   }
+   ```
+
+   질문 엔티티와 달리 답변 엔티티에서는 질문 엔티티를 참조하기 위해 question 속성을 추가했다.
+
+2. 답변을 통해 질문의 제목을 알고 싶다면 answer.getQuestion().getSubject()를 사용해 접근할 수 있다. 하지만 이렇게 question 속성만 추가하면 안 되고 질문 엔티티와 연결된 속성이라는 것을 답변 엔티티에 표시해야 한다. 즉, 다음과 같이 Answer 엔티티의 question 속성에 @ManyToOne 어노테이션을 추가해 질문 엔티티와 연결한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   
+   import org.springframework.data.annotation.CreatedDate;
+   
+   import jakarta.persistence.Column;
+   import jakarta.persistence.Entity;
+   import jakarta.persistence.GeneratedValue;
+   import jakarta.persistence.GenerationType;
+   import jakarta.persistence.Id;
+   import jakarta.persistence.ManyToOne;
+   import lombok.Getter;
+   import lombok.Setter;
+   
+   @Getter
+   @Setter
+   @Entity
+   public class Answer {
+   	@Id
+   	@GeneratedValue(strategy = GenerationType.IDENTITY)
+   	private Integer id;
+   	
+   	@Column(columnDefinition = "TEXT")
+   	private String content;
+   	
+   	@CreatedDate
+   	private LocalDateTime createDate;
+   	
+   	@ManyToOne
+   	private Question question;
+   }
+   ```
+
+   게시판 서비스에서는 하나의 질문에 답변은 여러 개가 달릴 수 있다. 따라서 답변은 Many(많은 것)가 되고 질문은 One(하나)이 된다. 즉, @ManyToOne 어노테이션을 사용하면 N:1 관계를 나타낼 수 있다. 이렇게 @ManyToOne 어노테이션을 설정하면 Answer(답변) 엔티티의 question 속성과 Question(질문) 엔티티가 서로 연결된다(실제 DB에서는 외래키 관계가 생성된다).
+
+   ※ @ManyToOne은 부모 자식 관계를 갖는 구조에서 사용한다. 여기서 부모는 Question, 자식은 Answer라고 할 수 있다.
+
+   ※ 외래키란 테이블과 테이블 사이의 관계를 구성할 때 연결되는 열을 의미한다.
+
+3. 그렇다면 반대로 질문에서 답변을 참조할 수는 없는가? 물론 가능하다. 답변과 질문이 N:1 관계라면 답변은 1:N 관계라고 할 수 있다. 이런 경우에는 @ManyToOne이 아닌 @OneToMany 어노테이션을 사용한다. 질문 하나에 답변은 여러 개이므로 Question 엔티티에 추가할 Answer 속성은 List 형태로 구성해야 한다. 이를 구현하기 위해 Question 엔티티를 다음과 같이 수정한다.
+
+   ```java
+   ```
+
+   
 
 ## 리포지터리로 데이터베이스 관리하기
 
