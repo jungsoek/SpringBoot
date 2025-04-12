@@ -634,7 +634,7 @@ DB를 사용할 준비가 끝났다. 이제 자바 프로그램에서 DB를 사�
 
    ```
    #JPA
-   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.Oracle21cDialect
+   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
    spring.jpa.hibernate.ddl-auto=update
    ```
 
@@ -837,39 +837,803 @@ cf) : 엔티티를 만들 때 Setter 메서드는 사용하지 않는다.
 3. 그렇다면 반대로 질문에서 답변을 참조할 수는 없는가? 물론 가능하다. 답변과 질문이 N:1 관계라면 답변은 1:N 관계라고 할 수 있다. 이런 경우에는 @ManyToOne이 아닌 @OneToMany 어노테이션을 사용한다. 질문 하나에 답변은 여러 개이므로 Question 엔티티에 추가할 Answer 속성은 List 형태로 구성해야 한다. 이를 구현하기 위해 Question 엔티티를 다음과 같이 수정한다.
 
    ```java
-   ```
-
+   package com.mysite.sbb;
    
+   import java.time.LocalDateTime;
+   import java.util.List;
+   
+   import jakarta.persistence.CascadeType;
+   import jakarta.persistence.Column;
+   import jakarta.persistence.Entity;
+   import jakarta.persistence.GeneratedValue;
+   import jakarta.persistence.GenerationType;
+   import jakarta.persistence.Id;
+   import jakarta.persistence.OneToMany;
+   import lombok.Getter;
+   import lombok.Setter;
+   
+   @Getter
+   @Setter
+   @Entity
+   public class Question {
+   	@Id
+   	@GeneratedValue(strategy = GenerationType.IDENTITY)
+   	private Integer id;
+   	
+   	@Column(length = 200)
+   	private String subject;
+   	
+   	@Column(columnDefinition = "TEXT")
+   	private String content;
+   	
+   	private LocalDateTime createDate;
+   	
+   	@OneToMany(mappedBy = "question", cascade = CascadeType.REMOVE)
+   	private List<Answer> answerList;
+   }
+   ```
+   
+   Answer 객체들로 구성된 answerList를 Question 엔티티의 속성으로 추가하고 @OneToMany 어노테이션을 설정했다. 질문에서 답변을 참조하려면 question.getAnswerList()를 호출한다. @OneToMany 어노테이션에 사용된 mappedBy는 참조 엔티티의 속성명을 정의한다. 즉, Answer 엔티티에서 Question 엔티티를 참조한 속성인 question을 mappedBy에 전달해야 한다.
+   
+   cf) : CascadeType.REMOVE란?
+   
+   게시판 서비스에서 질문 하나에 답변이 여러 개 작성될 수 있다. 그런데 보통 게시판 서비스에서는 질문을 삭제하면 그에 달린 답변들도 함께 삭제된다. SBB도 질문을 삭제하면 그에 달린 답변들도 모두 삭제되도록 cascade = CascadeType.REMOVE를 사용했다. 이와 관련해 보다 자세한 내용을 알고 싶다면 https://www.baeldung.com/jpa-cascade-types를 참고한다.
 
 ## 리포지터리로 데이터베이스 관리하기
 
+앞서 엔티티로 테이블을 구성하여 데이터를 관리할 준비를 마쳤다. 하지만 엔티티만으로는 테이블의 데이터를 저장, 조회, 수정, 삭제 등을 할 수 없다. 이와 같이 데이터를 관리하려면 데이터베이스와 연동하는 JPA 리포지터리가 반드시 필요하다.
+
 ### 리포지터리 생성하기
+
+엔티티가 DB 테이블을 생성했다면, 리포지터리는 이와 같이 생성된 DB 테이블의 데이터들을 저장, 조회, 수정, 삭제 등을 할 수 있도록 도와주는 인터페이스이다. 이때 리포지터리는 테이블에 접근하고, 데이터를 관리하는 메서드(예를 들어 findAll, save 등)를 제공한다.
+
+1. 리포지터리를 만들기 위해 com.mysite.sbb 패키지를 선택한 후 마우스 오른쪽 버튼을 누르고 New - Interface를 클릭해 QuestionRepository 인터페이스를 생성한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.data.jpa.repository.JpaRepository;
+   
+   public interface QuestionRepository extends JpaRepository<Question, Integer> {
+   	
+   }
+   ```
+
+   생성한 QuestionRepository 인터페이스를 리포지터리로 만들기 위해 JpaRepository 인터페이스를 상속한다. JpaRepository는 JPA가 제공하는 인터페이스 중 하나로 CRUD 작업을 처리하는 메서드를 이미 내장하고 있어 데이터 관리 작업을 좀 더 편리하게 처리할 수 있다. JpaRepository<Question, Integer>는 Question 엔티티로 리포지터리를 생성한다는 의미이다. Question 엔티티의 기본키의 자료형이 Integer임을 이와 같이 추가로 지정해야 한다.
+
+2. 마찬가지로 AnswerRepository 인터페이스를 생성한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.data.jpa.repository.JpaRepository;
+   
+   public interface AnswerRepository extends JpaRepository<Answer, Integer> {
+   
+   }
+   ```
+
+   이제 QuestionRepository, AnswerRepository를 이용하여 question, answer 테이블에 데이터를 저장, 조회, 수정, 삭제할 수 있다.
 
 ### JUnit 설치하기
 
+리포지터리를 이용하여 데이터를 저장하려면 질문을 등록하는 화면과 사용자가 입력한 질문 관련 정보를 저장하는 컨트롤러, 서비스 파일 등이 필요하다. 하지만 JUnit을 사용하면 이러한 프로세스를 따르지 않아도 리포지터리만 개별적으로 실행해 테스트해 볼 수 있다. 앞서 작성한 리포지터리가 정상적으로 동작하는지 직접 테스트하기 위해 먼저 JUnit을 설치한다.
+
+※ JUnit은 테스트 코드를 작성하고, 작성한 테스트 코드를 실행할 때 사용하는 자바의 테스트 프레임워크이다. 사실 JUnit은 리포지터리뿐만 아니라 소프트웨어 개발 시 테스트 작업을 수행할 때 많이 사용한다.
+
+JUnit을 사용하려면 build.gradle 파일에 다음과 같은 내용을 추가해야 한다.
+
+```
+...
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	
+	// JUnit 의존성
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+...
+```
+
+추가 후 Refresh Gradle Project를 선택하여 JUnit 설치를 마친다. JUnit을 사용할 준비가 된 것이다.
+
 ### 질문 데이터 저장하기
+
+1. 질문 엔티티로 테이블을 만들었으니 이제 만들어진 테이블에 데이터를 생성하고 저장한다. 먼저, src/test/java 디렉터리의 com.mysite.sbb 패키지에 SbbApplicationTests.java 파일을 열어 본다.
+
+   ![image-20250411180222214](./assets/image-20250411180222214.png)
+
+2. SbbApplicationTests.java 파일을 다음과 같이 수정한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   
+   	@Test
+   	void testJpa() {
+   		Question q1 = new Question();
+   		q1.setSubject("sbb가 무엇인가요?");
+   		q1.setContent("sbb에 대하여 알고 싶다.");
+   		q1.setCreateDate(LocalDateTime.now());
+   		this.questionRepository.save(q1);
+   		
+   		Question q2 = new Question();
+   		q2.setContent("스프링 부트 모델 질문");
+   		q2.setContent("id는 자동으로 생성되는가?");
+   		q2.setCreateDate(LocalDateTime.now());
+   		this.questionRepository.save(q2);
+   	}
+   
+   }
+   ```
+
+   @SpringBootTest 어노테이션은 SbbApplicationTests 클래스가 스프링 부트의 테스트 클래스임을 의미한다. 그리고 질문 엔티티의 데이터를 생성할 때 리포지터리(여기서는 QuestionRepository)가 필요하므로 @Autowired 어노테이션을 통해 스프링의 '의존성 주입(DI)'이라는 기능을 사용하여 QuestionRepository의 객체를 주입했다.
+
+   ※ 스프링의 의존성 주입(DI)이란 스프링이 객체를 대신 생성하여 주입하는 기법을 말한다.
+
+   > cf) : @Autowired 어노테이션
+   >
+   > 앞서 작성한 테스트 코드를 보면 questionRepository 변수는 선언만 되어 있고 그 값이 비어 있다. 하지만 @Autowired 어노테이션을 해당 변수에 적용하면 스프링 부트가 questionRepository 객체를 자동으로 만들어 주입한다. 객체를 주입하는 방식에는 @Autowired 어노테이션을 사용하는것 외에 Setter 메서드 또는 생성자를 사용하는 방식이 있다. 순환 참조 문제와 같은 이유로 개발 시 @Autowired보다는 생성자를 통한 객체 주입 방식을 권장한다. 하지만 테스트 코드의 경우 JUnit이 생성자를 통한 객체 주입을 지원하지 않으므로 테스트 코드 작성 시에만 @Autowired를 사용하고 실제 코드 작성 시에는 생성자를 통한 객체 주입 방식을 사용한다. 
+
+   @Test 어노테이션은 testJpa 메서드가 테스트 메서드임을 나타낸다. SbbApplicationTests 클래스를 JUnit으로 실행하면 @Test 어노테이션이 붙은 testJpa 메서드가 실행된다.
+
+   testJpa 메서드의 내용을 자세히 보자. testJpa 메서드는 q1, q2라는 질문 엔티티의 객체를 생성하고 QuestionRepository를 이용하여 그 값을 DB에 저장한다. 이와 같이 데이터를 저장하면 DB의 question 테이블은 다음과 같은 형태로 저장될 것이다.
+
+   | ID   | Content                   | CreateDate          | Subject                      |
+   | ---- | ------------------------- | ------------------- | ---------------------------- |
+   | 1    | sbb에 대해서 알고 싶다.   | 2025-04-11-18:22:22 | sbb가 무엇인가?              |
+   | 2    | id는 자동으로 생성되는가? | 2025-04-11-18:22:22 | 스프링 부트 모델 질문입니다. |
+
+3. 이제 작성한 SbbApplicationTests 클래스를 실행한다. Run - Run As - JUnit Test 순서대로 선택하면 SbbApplicationTests 클래스를 실행할 수 있다.
+
+4. 하지만 로컬 서버가 이미 구동 중이라면 'The file is locked: nio:/Users/pahkey/local.mv.db'와 비슷한 오류가 발생할 것이다. 오라클 DB는 파일 기반의 DB인데, 이미 로컬 서버가 동일한 DB 파일(local.mv.db)을 점유하고 있어 이러한 오류가 발생하는 것이다. 따라서 테스트할 때는 먼저 로컬 서버를 중지해야 한다. 로컬 서버는 다음과 같이 Boot Dashboard에서 중지 버튼을 클릭하여 중지할 수 있다.
+
+5. 만약 오류가 발생했다면 로컬 서버를 중지하고 Run - Run을 클릭한 뒤, 다시 테스트를 실행한다. 그러면 오른쪽과 같은 JUnit 화면이 나타나고 오류 없이 잘 실행된다.
+
+6. 실제 DB에 값이 잘 들어갔는지 확인해 보기 위해 다시 로컬 서버를 시작하고 DB에 접속하여 다음 쿼리를 실행한다.
+
+   ```sql
+   SELECT * FROM QUESTION
+   ```
+
+   그러면 다음과 같이 우리가 저장한 Question 객체의 값이 DB의 데이터로 저장된 것을 확인할 수 있다.
+
+   ※ id는 질문 엔티티의 기본키로, 질문 엔티티를 생성할 때 @GeneratedValue를 활용해 설정했던 대로 속성값이 자동으로 1씩 증가하는 것을 확인할 수 있다.
+
+   ※ JPA가 적용되지 않으므로(에러) 테이블을 아래와 같이 1씩 증가하도록 작성했다.
+
+   ```sql
+   DROP TABLE ANSWER;
+   DROP TABLE QUESTION;
+   
+   CREATE TABLE QUESTION(
+       ID              NUMBER(10) GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+       SUBJECT         NVARCHAR2(20),
+       CONTENT         CLOB,
+       CREATE_DATE     DATE
+   );
+   
+   CREATE TABLE ANSWER(
+       ID              NUMBER(10)  PRIMARY KEY,
+       QUESTION_ID     NUMBER(10),
+       CONTENT         CLOB,
+       CREATE_DATE     DATE,
+       CONSTRAINT      fk_question     FOREIGN KEY (question_id) REFERENCES question(id) ON DELETE CASCADE   
+   );
+   ```
 
 ### 질문 데이터 조회하기
 
+리포지터리가 제공하는 메서드들을 하나씩 살펴보고 이를 활요해 데이터를 조회한다.
+
 #### findAll 메서드
+
+SbbApplicationTests.java 파일에서 작성한 테스트 코드를 다음과 같이 수정해 보자.
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+class SbbApplicationTests {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+
+	@Test
+	void testJpa() {
+		List<Question> all = this.questionRepository.findAll();
+		assertEquals(2, all.size());
+		Question q = all.get(0);
+		assertEquals("sbb가 무엇인가요?", q.getSubject());
+	}
+}
+```
+
+question 테이블에 저장된 모든 데이터를 조회하기 위해서 리포지터리(questionRepository)의 findAll 메서드를 사용했다. 앞서 2개의 질문 데이터를 저장했기 때문에 데이터 사이즈는 2가 되어야 한다. 데이터 사이즈가 2인지 확인하기 위해 JUnit의 assertEquals 메서드를 사용하는데, 이 메서드는 테스트에서 예상한 결과와 실제 결과가 동일한지를 확인하는 목적으로 사용한다. 즉, JPA 또는 DB에서 데이터를 올바르게 가져오는지를 확인하려는 것이다. assertEquals(기잿값, 실젯값)와 같이 작성하고 기댓값과 실젯값이 동일한지를 조사한다. 만약 기댓값과 실젯값이 동일하지 않다면 테스트는 실패로 처리된다. 여기서는 우리가 저장한 첫 번째 데이터의 제목이 'sbb가 무엇인가요?' 데이터와 일치하는지도 테스트했다. 테스트할 때 로컬 서버를 중지하고 다시 한번 Run - Run As - JUnit Test을 실행하면 테스트가 성공했다고 표시될 것이다.
 
 #### findById 메서드
 
+이번에는 질문 엔티티의 기본인 id의 값을 활용해 데이터를 조회한다.
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest
+class SbbApplicationTests {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+
+	@Test
+	void testJpa() {
+		Optional<Question> oq = this.questionRepository.findById(1);
+		if(oq.isPresent()) {
+			Question q = oq.get();
+			assertEquals("sbb가 무엇인가요?", q.getSubject());
+		}
+	}
+
+}
+```
+
+id값으로 데이터를 조회하기 위해서는 리포지터리의 findById 메서드를 사용해야 한다. 여기서 questionRepository를 사용하여 DB에서 id가 1인 질문을 조회한다. 이때 findById의 리턴 타입은 Question이 아닌 Optional임에 주의한다. findById로 호출한 값이 존재할 수도 있고, 존재하지 않을 수도 있어서 리턴 타입으로 Optional이 사용된 것이다.
+
+Optional은 그 값을 처리하기 위한(null값을 유연하게 처리하기 위한) 클래스로, isPresent() 메서드로 값이 존재하는지 확인할 수 있다. 만약 isPresent()를 통해 값이 존재한다는 것을 확인했다면, get() 메서드를 통해 실제 Question 객체의 값을 얻는다. 즉, 여기서는 DB에서 ID가 1인 질문을 검색하고, 이에 해당하는 질문의 제목이 'sbb가 무엇인가요?'인 경우에 JUnit 테스트를 통과하게 된다.
+
 #### findBySubject 메서드
+
+이번에는 질문 엔티티의 subject값으로 데이터를 조회한다.
+
+1. 아쉽게도 리포지터리는 findBySubject 메서드를 기본적으로 제공하지는 않는다. 그래서 findBySubject 메서드를 기본적으로 제공하지는 않는다. 그래서 findBySubject 메서드를 사용하려면 다음과 같이 QuestionRepository 인터페이스를 변경해야 한다. 먼저 src/main/java 디렉터리로 돌아가 com.mysite.sbb 패키지의 QuestionRepository.java를 수정한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.data.jpa.repository.JpaRepository;
+   
+   public interface QuestionRepository extends JpaRepository<Question, Integer> {
+   	Question findBySubject(String subject);
+   }
+   ```
+
+2. 다시 src/test/java 디렉터리로 돌아가 com.mysite.sbb 패키지의 SbbApplicationTests.java를 수정해 subject 값으로 테이블에 저장된 데이터를 조회할 수 있다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   import static org.junit.jupiter.api.Assertions.assertEquals;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   
+   	@Test
+   	void testJpa() {
+   		Question q = this.questionRepository.findBySubject("sbb가 무엇인가요?");
+   		assertEquals(1, q.getId());
+   	}
+   
+   }
+   ```
+
+   테스트 코드를 실행해 보면 성공적으로 통과된다. '인터페이스에 findBySubject라는 메서드를 선언만 하고 구현하지 않았는데 도대체 어떻게 실행되는 거지?'라는 궁금징이 생길 수 있다. 이는 JPA에 리포지터리의 메서드명을 분석하여 쿼리를 만들고 실행하는 기능이 있기 때문에 가능하다. 즉, findBy + 엔티티의 속성명(예를 들어 findBySubject)과 같은 리포지터리의 메서드를 작성하면 입력한 속성의 값으로 데이터를 조회할 수 있다.
+
+3. findBySubject 메서드를 호출할 때 실제 DB에서는 어떤 쿼리문이 실행되는지 살펴본다. 실행되는 쿼리문은 콘솔 로그에서 확인할 수 있다. 그러기 위해 다음과 같이 application.properties 파일을 수정한다.
+
+   ```
+   spring.application.name=sbb
+   
+   #SERVER
+   server.port=8080
+   
+   #DATABASE
+   spring.datasource.url=jdbc:oracle:thin:@localhost:1521/orcl
+   spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+   spring.datasource.username=C##SCOTT
+   spring.datasource.password=0000
+   
+   
+   #JPA
+   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
+   spring.jpa.hibernate.ddl-auto=update
+   spring.jpa.properties.hibernate.format_sql=true
+   spring.jpa.properties.hibernate.show_sql=true
+   ```
+
+4. 그리고 다시 한번 테스트 코드를 실행한다. 그러면 다음과 같이 콘솔 로그에서 DB에서 실행된 쿼리문을 확인할 수 있다.
+
+   ```
+   Hibernate: 
+       select
+           q1_0.id,
+           q1_0.content,
+           q1_0.create_date,
+           q1_0.subject 
+       from
+           question q1_0 
+       where
+           q1_0.subject=?
+   ```
+
+   실행한 쿼리문 중 where 문에 조건으로 subject가 포함된 것을 확인할 수 있다.
 
 #### findBySubjectAndContent 메서드
 
+1. 이번에는 subject와 content를 함께 조회한다. SQL을 활용해 DB에서 두 개의 열(여기서는 엔티티의 속성)을 조회하기 위해서는 And 연산자를 사용한다. subject와 content 속성을 조회하기 위해 findBySubject와 마찬가지로 리포지터리에 findBySubjectAndContent 메서드를 추가해야 한다. 다음과 같이 QuestionRepository.java 파일을 수정한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.data.jpa.repository.JpaRepository;
+   
+   public interface QuestionRepository extends JpaRepository<Question, Integer> {
+   	Question findBySubject(String subject);
+   	Question findBySubjectAndContent(String subject, String content);
+   }
+   ```
+
+2. 그리고 테스트 코드를 다음과 같이 작성한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   import static org.junit.jupiter.api.Assertions.assertEquals;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   
+   	@Test
+   	void testJpa() {
+   		Question q = this.questionRepository.findBySubjectAndContent("sbb가 무엇인가요?", "sbb에 대해서 알고 싶습니다.");
+   		assertEquals(1, q.getId());
+   	}
+   
+   }
+   
+   ```
+
+   ```
+   Hibernate: 
+       select
+           q1_0.id,
+           q1_0.content,
+           q1_0.create_date,
+           q1_0.subject 
+       from
+           question q1_0 
+       where
+           q1_0.subject=? 
+           and q1_0.content=?
+   ```
+
+   where 문에 and 연산자가 사용되어 subject와 content 열을 조회하는 것을 확인할 수 있다.
+
+   이렇듯 리포지터리의 메서드명은 데이터를 조회하는 쿼리문의 where 조건을 결정하는 역할을 한다. 여기서는 findBySubject, findBySubjectAndContent 두 메서드만 알아봤지만 상당히 많은 조합을 사용할 수 있다. 조합할 수 있는 메서드를 간단하게 표로 정리해 보았다.
+
+   | SQL 연산자       | 리포지터리의 메서드 예                                       | 설명                                                         |
+   | ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+   | And              | findBySubjectAndContent(String subject, String content)      | Subject, Content 열과 일치하는 데이터를 조회                 |
+   | Or               | findBySubjectOrContent(String subject, String content)       | Subject열 또는 Content 열과 일치하는 데이터를 조회           |
+   | Between          | findByCreateDateBetween(LocalDateTime fromDate, LocalDateTime toDate) | CreateDate 열의 데이터 중 정해진 범위 내에 있는 데이터를 조회 |
+   | LessThan         | findByLessThan(Integer id)                                   | id 열에서 조건보다 작은 데이터를 조회                        |
+   | GreaterThanEqual | findByIdGreaterThanEqual(Integer id)                         | id 열에서 조건보다 크거나 같은 데이터를 조회                 |
+   | Like             | findBySubjectLike(String subject)                            | Subject 열에서 문자열 'subject'와 같은 문자열을 포함한 데이터를 조회 |
+   | In               | findBySubjectIn(String[] subjects)                           | Subject 열의 데이터가 주어진 배열에 포함되는 데이터만 조회   |
+   | OrderBy          | findBySubjectOrderByCreateDateAsc(String subject)            | Subject 열 중 조건에 일치하는 데이터를 조회하여 그 데이터를 반환할 때 CreateDate 열을 오름차순으로 정렬하여 반환 |
+
 #### findBySubjectLike 메서드
+
+1. 이번에는 질문 엔티티의 subject 열 값들 중에 특정 문자열을 포함하는 데이터를 조회한다. SQL에서는 특정 문자열을 포함한 데이터를 열에서 찾을 때 Like를 사용한다. subject 열에서 특정 문자열을 포함하는 데이터를 찾기 위해 다음과 같이 findBySubjectLike 메서드를 리포지터리에 추가한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.util.List;
+   
+   import org.springframework.data.jpa.repository.JpaRepository;
+   
+   public interface QuestionRepository extends JpaRepository<Question, Integer> {
+   	Question findBySubject(String subject);
+   	Question findBySubjectAndContent(String subject, String content);
+   	List<Question> findBySubjectLike(String subject);
+   }
+   ```
+
+2. 그리고 테스트 코드는 다음과 같이 수정한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   import static org.junit.jupiter.api.Assertions.assertEquals;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   
+   	@Test
+   	void testJpa() {
+   		List<Question> qList = this.questionRepository.findBySubjectLike("sbb%");
+   		Question q = qList.get(0);
+   		assertEquals("sbb가 무엇인가요?", q.getSubject());
+   	}
+   
+   }
+   ```
+
+   findBySubjectLike 메서드를 사용할 때 데이터 조회를 위한 조건이 되는 문자열로 sbb%와 같이 %를 적어 주어야 한다. %는 표기하는 위치에 따라 의미가 달라진다. 아래 표를 살펴보자.
+
+   | 표기 예 | 표기 위치에 따른 의미   |
+   | ------- | ----------------------- |
+   | sbb%    | 'sbb'로 시작하는 문자열 |
+   | %sbb    | 'sbb'로 끝나는 문자열   |
+   | %sbb%   | 'sbb'를 포함하는 문자열 |
 
 ### 질문 데이터 수정하기
 
+1. 질문 엔티티의 데이터를 수정하는 테스트 코드를 작성한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   import static org.junit.jupiter.api.Assertions.assertEquals;
+   import static org.junit.jupiter.api.Assertions.assertTrue;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   
+   	@Test
+   	void testJpa() {
+   		Optional<Question> oq = this.questionRepository.findById(1);
+   		assertTrue(oq.isPresent());
+   		Question q = oq.get();
+   		q.setSubject("수정된 제목");
+   		this.questionRepository.save(q);
+   	}
+   
+   }
+   ```
+
+   질문 엔티티의 데이터를 조회한 다음, subject 속성을 '수정한 제목'이라는 값으로 수정했다. 변경된 질문을 DB에 저장하기 위해서 this.questionRepository.sava(q)와 같이 리포지터리의 save 메서드를 사용했다.
+
+2. 테스트를 수행해 보면 다음과 같이 콘솔 로그에서 update 문이 실행되었음을 확인할 수 있다.
+
+   ```
+   Hibernate: 
+       select
+           q1_0.id,
+           q1_0.content,
+           q1_0.create_date,
+           q1_0.subject 
+       from
+           question q1_0 
+       where
+           q1_0.subject like ?
+   ```
+
+   그리고 SELECT * FROM QUESTION 쿼리문을 입력하고 실행해 question 테이블을 확인하면 subject의 값이 변경되었음을 알 수 있다.
+
+   ![image-20250412153257018](./assets/image-20250412153257018.png)
+
 ### 질문 데이터 삭제하기
+
+1. 이어서 데이터를 삭제한다. 여기서는 첫 번째 질문을 삭제해 본다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   import static org.junit.jupiter.api.Assertions.assertEquals;
+   import static org.junit.jupiter.api.Assertions.assertTrue;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   
+   	@Test
+   	void testJpa() {
+   		assertEquals(2, this.questionRepository.count());
+   		Optional<Question> oq = this.questionRepository.findById(1);
+   		assertTrue(oq.isPresent());
+   		Question q = oq.get();
+   		this.questionRepository.delete(q);
+   		assertEquals(1, this.questionRepository.count());
+   	}
+   
+   }
+   ```
+
+   리포지터리의 delete 메서드를 사용하여 데이터를 삭제했다. 데이터 건수가 삭제하기 전에 2였는데, 삭제한 후 1이 되었는지를 테스트했다(리포지터리의 count 메서드는 테이블 행의 개수를 리턴한다).
+
+2. 그리고 다시 question 테이블을 확인해 보면 다음과 같이 ID가 1인 행이 삭제되었음을 알 수 있다.
+
+   ![image-20250412153641239](./assets/image-20250412153641239.png)
 
 ### 답변 데이터 저장하기
 
+1. 이번에는 답변 엔티티의 데이터를 생성하고 저장한다. SbbApplicationTests.java 파일을 열고 다음과 같이 수정한다.
+
+   ```java
+   package com.mysite.sbb;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import org.junit.jupiter.api.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.boot.test.context.SpringBootTest;
+   
+   import static org.junit.jupiter.api.Assertions.assertEquals;
+   import static org.junit.jupiter.api.Assertions.assertTrue;
+   
+   @SpringBootTest
+   class SbbApplicationTests {
+   	
+   	@Autowired
+   	private QuestionRepository questionRepository;
+   	
+   	@Autowired
+   	private AnswerRepository answerRepository;
+   
+   	@Test
+   	void testJpa() {
+   		Optional<Question> oq = this.questionRepository.findById(2);
+   		assertTrue(oq.isPresent());
+   		Question q = oq.get();
+   		
+   		Answer a = new Answer();
+   		a.setContent("네 자동으로 생성됩니다.");
+   		a.setQuestion(q);
+   		a.setCreateDate(LocalDateTime.now());
+   		this.answerRepository.save(a);
+   	}
+   
+   }
+   ```
+
+   질문 데이터를 저장할 때와 마찬가지로 답변 데이터를 저장할 때에도 리포지터리(여기서는 AnswerRepository)가 필요하므로 AnswerRepository의 객체를 @Autowired를 통해 주입했다. 답변을 생성하려면 질문이 필요하므로 우선 질문을 조회해야 한다. questionRepository의 findById 메서드를 통해 id가 2인 질문 데이터를 가져와 답변의 question 속성에 대입해 답변 데이터를 생성했다.
+
+2. DB에 값이 잘 들어갔는지 확인한다.
+
+   ![image-20250412154451974](./assets/image-20250412154451974.png)
+
 ### 답변 데이터 조회하기
 
+답변 엔티티도 질문 엔티티와 마찬가지로 id 속성이 기본키이므로 값이 자동으로 생성된다. 질문 데이터를 조회할 때 findByID 메서드를 사용했듯이 id값을 활용해 데이터를 조회한다.
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest
+class SbbApplicationTests {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Autowired
+	private AnswerRepository answerRepository;
+
+	@Test
+	void testJpa() {
+		Optional<Answer> oa = this.answerRepository.findById(1);
+		assertTrue(oa.isPresent());
+		Answer a = oa.get();
+		assertEquals(2, a.getQuestion().getId());
+	}
+
+}
+```
+
+id값이 1인 답변을 조회했다. 그리고 조회한 답변과 연결된 질문의 id가 2인지도 조회해 보았다.
+
 ### 답변 데이터를 통해 질문 데이터 찾기 vs 질문 데이터를 통해 답변 데이터 찾기
+
+앞에서 살펴본 답변 엔티티의 question 속성을 이용하면 다음과 같은 메서드를 사용해 '답변에 연결된 질문'에 접근할 수 있다.
+
+```
+a.getQuestion()
+```
+
+a는 답변 객체이고, a.getQuestion()은 답변에 연결된 질문 객체를 뜻한다.
+
+답변에 연결된 질문 데이터를 찾는 것은 Answer 엔티티에 question 속성이 이미 정의되어 있어서 매우 쉽다.
+
+그런데 반대의 경우도 가능할까? 즉, 질문 데이터에서 답변 데이터를 찾을 수 있을까? 다음과 같이 질문 엔티티에 정의한 answerList를 사용하면 해결할 수 있다.
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest
+class SbbApplicationTests {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Autowired
+	private AnswerRepository answerRepository;
+
+	@Test
+	void testJpa() {
+		Optional<Question> oq = this.questionRepository.findById(2);
+		assertTrue(oq.isPresent());
+		Question q = oq.get();
+		
+		List<Answer> answerList = q.getAnswerList();
+		
+		assertEquals(1, answerList.size());
+		assertEquals("네 자동으로 생성됩니다.", answerList.get(0).getContent());
+	}
+
+}
+```
+
+질문을 조회한 후 이 질문에 달린 답변 전체를 구하는 테스트 코드이다. id가 2인 질문 데이터에 답변 데이터를 1개 등록했으므로 이와 같이 코드를 작성해 확인할 수 있다.
+
+왜냐하면 QuestionRepository가 findById 메서드를 통해 Question 객체를 조회하고 나면 DB 세션이 끊어지기 때문이다.
+
+그래서 그 이후에 실행되는 q.getAnswerList() 메서드(Question 객체로부터 answer 리스트를 구하는 메서드)는 세션이 종료되어 오류가 발생한다. answerList는 앞서 q 객체를 조회할 때가 아니라 q.getAnswerList() 메서드를 호출하는 시점에 가져오기 때문에 이와 같이 오류가 발생한 것이다.
+
+※ 이렇게 데이터를 필요한 시점에 가져오는 방식을 지연(Lazy) 방식이라고 한다. 이와 반대로 q 객체를 조회할 때 미리 answer 리스트를 모두 가져오는 방식은 즉시(Eager) 방식이라고 한다. @OneToMany, @ManyToOne 어노테이션 옵션으로 fetch-FetchType.LAZY 또는 fetch=FetchType.EAGER처럼 가져오는 방식을 설정할 수 있는데, 이 책에서는 따로 지정하지 않고 항상 디폴트값을 사용한다.
+
+사실 이 문제는 테스트 코드에서만 발생한다. 실제 서버에서 JPA 프로그램들을 실행할 때는 DB 세션이 종료되지 않아 이와 같은 오류가 발생하지 않는다.
+
+테스트 코드를 수행할 때 이런 오류를 방지할 수 있는 가장 간단한 방법은 다음과 같이 @Transactional 어노테이션을 사용하는 것이다. @Transactional 어노테이션을 사용하면 메서드가 종료될 때까지 DB 세션이 유지된다. 코드를 수정해본다.
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import jakarta.transaction.Transactional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest
+class SbbApplicationTests {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Autowired
+	private AnswerRepository answerRepository;
+
+	@Transactional
+	@Test
+	void testJpa() {
+		Optional<Question> oq = this.questionRepository.findById(2);
+		assertTrue(oq.isPresent());
+		Question q = oq.get();
+		
+		List<Answer> answerList = q.getAnswerList();
+		
+		assertEquals(1, answerList.size());
+		assertEquals("네 자동으로 생성됩니다.", answerList.get(0).getContent());
+	}
+
+}
+```
+
+메서드에 @Transactional 어노테이션을 추가하면 오류 없이 잘 수행된다.
 
 ## 도메인별로 분류하기
 
