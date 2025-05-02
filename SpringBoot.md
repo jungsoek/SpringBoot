@@ -2585,21 +2585,158 @@ style.css 파일에 질문 상세 화면의 디자인 요소들을 작성했다.
 
 ## 부트스트랩으로 화면 꾸미기
 
-
-
 ### 부트스트랩 설치하기
+
+1. 다음 URL에서 부트스트랩을 내려받는다.
+
+   ```
+   https://getbootstrap.com/docs/5.3/getting-started/download/
+   ```
+
+2. 부트스트랩 다운로드 페이지에 접속한 후 Download 버튼을 클릭해 다음과 같은 이름의 파일을 내려받자.
+
+   ```
+   bootstrap-5.3.1-dist.zip
+   ```
+
+3. 압축 파일 안에 많은 파일들이 있는데 이 중에서 bootstrap.min.css 파일을 복사하여 static 디렉터리에 저장한다.
 
 ### 부트스트랩 적용하기
 
+1. 먼저 질문 목록 템플릿에 부트스트랩을 적용해 보자.
+
+   */templates/question_list.html*
+
+   ```html
+   <link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+   
+   <div class="container my-3">
+   	<table class="table">
+   		<thead class="table-dark">
+   			<tr>		
+   				<th>번호</th>	
+   				<th>제목</th>
+   				<th>작성일시</th>
+   			</tr>
+   		</thead>
+   		<tbody>
+   			<tr th:each="question, loop : ${questionList}">
+   				<td th:text="${loop.count}"></td>
+   				<td>
+   					<a th:href="@{|/question/detail/${question.id}|}" th:text="${question.subject}"></a>
+   				</td>
+   				<td th:text="${#temporals.format(question.createDate, 'yyyy-MM-dd HH:mm')}"></td>
+   			</tr>
+   		</tbody>
+   	</table>
+   </div>
+   
+   ```
+
+   테이블 항목으로 '번호'를 추가했다. 번호는 loop.count를 사용하여 표시한다. loop.count는 questionList의 항목을 th:each로 반복할 때 현재의 순서를 나타낸다. 그리고 날짜를 보기 좋게 출력하기 위해 타임리프의 #temporals.format 기능을 사용했다. #temporals.format은 #temporals.format(날짜 객체, 날짜 포맷)와 같이 사용하는데, 날짜 객체를 날짜 포맷에 맞게 변환한다.
+
+   우리는 가장 윗줄에 bootstrap.min.css를 사용할 수 있도록 링크를 추가했다. 그리고 위에서 사용한 class="container my-3", class="table", class="table-dark" 등은 bootstrap.min.css에 이미 정의되어 있는 클래스들로 간격을 조정하고 테이블에 스타일을 지정하는 용도로 사용했다.
+
+2. 다음과 같이 부트스트랩을 적용한 질문 목록 페이지를 볼 수 있을 것이다.
+
+3. 이어서 질문 상세 템플릿에도 다음처럼 부트스트랩을 적용하자.
+
+   */templates/question_detail.html*
+
+   ```html
+   <link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+   <link rel="stylesheet" type="text/css" th:href="@{/style.css}">
+   
+   <div class="container my-3">
+   	<!-- 질문 -->
+   	<h2 class="border-bottom py-2" th:text="${question.subject}"></h2>
+   	<div class="card my-3">
+   		<div class="card-body">
+   			<div class="card-text" style="white-space: pre-line;" th:text="${question.content}"></div>
+   			<div class="d-flex justify-content-end">
+   				<div class="badge bg-light text-dark p-2 text-start">
+   					<div th:text="${#temporals.format(question.createDate, 'yyyy-MM-dd HH:mm')}"></div>
+   				</div>
+   			</div>
+   		</div>
+   	</div>
+   	<!-- 답변 개수 표시 -->
+   	<h5 class="border-bottom my-3 py-2"
+   		th:text="|${#lists.size(question.answerList)}개의 답변이 있습니다.|"></h5>
+   	<!-- 답변 반복 시작 -->
+   	<div class="card my-3" th:each="answer : ${question.answerList}">
+   		<div class="card-body">
+   			<div class="card-text" style="white-space: pre-line;" th:text="${answer.content}"></div>
+   			<div class="d-flex justify-content-end">
+   				<div class="badge bg-light text-dark p-2 text-start">
+   					<div th:text="${#temporals.format(answer.createDate, 'yyyy-MM-dd HH:mm')}"></div>
+   				</div>
+   			</div>
+   		</div>
+   	</div>
+   	
+   	<!-- 답변 반복 끝 -->
+   	<!-- 답변 작성 -->
+   	<form th:action="@{|/answer/create/${question.id}|}" method="post" class="my-3">
+   		<textarea name="content" id="content" rows="10" class="form-control"></textarea>
+   		<input type="submit" value="답변 등록" class="btn btn-primary my-2">
+   	</form>
+   	
+   </div>
+   ```
+
 ## 표준 HTML 구조로 변경하기
+
+지금까지 작성한 질문 목록(question_list.html), 질문 상세(question_detail.html) 템플릿은 표준 HTML 구조로 작성하지 않았다. 어떤 웹 브라우저를 사용하더라도 웹 페이지가 동일하게 보이고 정상적으로 작동하게 하려면 반드시 웹 표준을 지키는 HTML 문서로 작성해야 한다.
 
 ### 표준 HTML 구조 살펴보기
 
 ### 템플릿 상속하기
 
+앞에서 작성한 질문 목록과 질문 상세 템플릿이 표준 HTML 구조로 구성되도록 수정해 보자. 그런데 이 템플릿 파일들을 모두 표준 HTML 구조로 변경하면 body 요소를 제외한 바깥 부분은 모두 같은 내용으로 중복된다.
+
+그렇게 되면 CSS 파일 이름이 변경되거나 새로운 CSS 파일을 추가할 때마다 모든 템플릿 파일을 일일이 수정해야 한다. 타임리프는 이런 중복의 불편함을 해소하기 위해 템플릿 상속 기능을 제공한다. 템플릿 상속은 기본 틀이 되는 템플릿을 먼저 작성하고 다른 템플릿에서 그 템플릿을 상속해 사용하는 방법이다. 템플릿 상속에 대해서 자세히 알아보자.
+
 #### layout.html로 기본 틀 만들기
 
+템플릿을 상속하려면 각 템플릿 파일에서 반복되는 내용을 담아 기본 틀이 되는 템플릿을 만들어야 한다. 그러기 위해 templates에 layout.html 파일을 만들어 다음 내용을 작성해 보자.
+
+*/templates/layout.html*
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Document</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+    <!-- sbb CSS -->
+     <link rel="stylesheet" href="text/css" th:href="@{/style.css}">
+     <title>Hello, sbb!</title>
+</head>
+<body>
+    <!-- 기본 템플릿 안에 삽입될 내용 Start -->
+    <th:block layout:fragment="content"></th:block>
+    <!-- 기본 템플릿 안에 삽입될 내용 End -->
+</body>
+</html>
+```
+
+layout.html은 모든 템플릿이 상속해야 하는 템플릿으로, 표준 HTML 문서 구조로 정리된 기본 틀이된다. body 요소 안의 `<th:block layout:fragment="content"></th:block>`은 layout.html을 상속한 템플릿에서 개별적으로 구현해야 하는 영역이 된다. 즉, layout.html 템플릿을 상속하면 `<th:block layout:fragment="content"></th:block>` 영역만 수정해도 표준 HTML 문서로 작성된다.
+
 #### question_list.html에 템플릿 상속하기
+
+question_list.html 템플릿을 다음과 같이 변경하여 layout.html을 상속해 보자.
+
+*/templates/question_list.html*
+
+```html
+```
+
+
 
 #### question_detail.html에 템플릿 상속하기
 
