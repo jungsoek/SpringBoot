@@ -38,8 +38,6 @@
 
 클라이언트와 서버의 관계는 아래 그림으로 쉽게 이해할 수 있다. 클라이언트는 자주 사용하는 브라우저(크롬, 사파리 등)를 말하고, 서버는 브라우저로 접속 가능한 원격 컴퓨터를 의미한다.
 
-
-
 크롬 브라우저에서 서버에 요청을 보낼 때는 서버의 주소(IP 주소) 또는 서버의 주소를 대체할 수 있는 도메인명을 알아야 한다. 가까운 예로 브라우저 주소 창에 naver.com을 입력하면 네이버에서 운용하는 웹 서버가 호출되고 서버는 요청에 대한 응답을 브라우저에게 돌려준다. 즉, 웹 서버는 요청에 대한 응답으로 HTML 문서나 다른 리소스들을 브라우저에 표시한다.
 
 #### IP 주소와 포트 이해하기
@@ -741,7 +739,7 @@ id 속성에 적용한 @Id 어노테이션은 id 속성을 기본키로 지정�
 
 #### @Column 어노테이션
 
-엔티티의 속성은 테이브릐 열 이름과 일치하는데 열의 세부 설정을 위해 @Column 어노테이션을 사용한다. length는 열의 길이를 설정할 때 사용하고(여기서는 열의 길이를 200으로 정했다), columnDefinition은 열 데이터의 유형이나 성격을 정의할 때 사용한다. 여기서 columnDefinition = "TEXT"는 말 그대로 '텍스트'를 열 데이터로 넣을 수 있음을 의미하고, 글자 수를 제한할 수 없는 경우에 사용한다.
+엔티티의 속성은 테이블의 열 이름과 일치하는데 열의 세부 설정을 위해 @Column 어노테이션을 사용한다. length는 열의 길이를 설정할 때 사용하고(여기서는 열의 길이를 200으로 정했다), columnDefinition은 열 데이터의 유형이나 성격을 정의할 때 사용한다. 여기서 columnDefinition = "TEXT"는 말 그대로 '텍스트'를 열 데이터로 넣을 수 있음을 의미하고, 글자 수를 제한할 수 없는 경우에 사용한다.
 
 ※ 엔티티의 속성은 @Column 어노테이션을 사용하지 않더라도 테이블의 열로 인식한다. 테이블의 열로 인식하고 싶지 않다면 @Transient 어노테이션을 사용한다. @Transient 어노테이션은 엔티티의 속성을 테이블의 열로 만들지 않고 클래스의 속성 기능으로만 사용하고자 할 때 쓴다.
 
@@ -1637,61 +1635,957 @@ class SbbApplicationTests {
 
 ## 도메인별로 분류하기
 
+이제 본격적으로 SBB의 외형을 갖춘다. 그전에 먼저, 지금까지 만든 많은 자바 파일을 정리하고 넘어간다. 현재는 자바 파일이 패키지별로 정리되어 있지 않아 어수선하다. 패키지를 활용하면 자바 파일을 원하는 대로 분류할 수 있다. 지금까지 우리가 작성한 파일은 오른쪽과 같이 com.mysite.sbb라는 이름의 패키지 안에 모두 모여 있다.
+
+이렇게 하나의 패키지 안에 모든 자바 파일을 넣고 관리하는 것은 바람직하지 않다. 그러므로 SBB의 도메인별로 패키지를 나누어 자바 파일을 관리한다.
+
+다음 표와 같이 SBB 프로젝트의 도메인별로 패키지를 구성하려고 한다.
+
+| 도메인 이름 | 패키지 이름             | 설명                                  |
+| ----------- | ----------------------- | ------------------------------------- |
+| question    | com.mysite.sbb.question | 게시판의 질문과 관련된 자바 파일 모음 |
+| answer      | com.mysite.sbb.answer   | 게시판의 답변과 관련된 자바 파일 모음 |
+| user        | com.mysite.sbb.user     | 사용자와 관련된 자바 파일 모음        |
+
+표와 같은 기준으로 STS에 직접 패키지를 생성하고 각 패키지에 맞도록 해당 파일들을 이동시킨다.
+
+1. 패키지 생성을 위해 com.mysite.sbb 패키지를 선택한 후 마우스 오른쪽 버튼을 눌러 New - Package를 클릭한다. 그다음, New Java Package 창에서 com.mysite.sbb 다음에 패키지 이름을 입력하여 패키지를 만든다.
+
+2. 패키지를 생성했다면 해당 패키지로 파일을 이동시킨다.
+
+   com.mysite.sbb.question 패키지에 Question.java, QuestionRepository.java 파일을 이동시켰다. 이어서 com.mysite.sbb.answer 패키지를 생성하고 Answer.java, AnswerRepository.java 파일을 이동시켰다.
+
+   이때 Answer.java에서 Question 클래스를 import하는 위치가 변경되므로 import com.mysite.sbb.question.Question; 문장을 추가해야 한다. Ctrl + Shift + O 키를 누르면 필요한 import 문을 쉽게 추가할 수 있다.
+
+   그리고 나머지 파일들은 특정 도메인에 속하지 않았으므로 com.mysite.sbb 패키지에 그대로 놔두었다.
+
+   이와 같이 자바 파일을 도메인에 따라 패키지로 나누어 관리하면 비슷한 기능이나 관련된 개념을 함께 묶어 코드들을 구조화하여 정리하게 되므로 코드를 쓰거나 읽을 때 혹은 유지 보수를 할 때 편리하다.
+
+:rotating_light: 패키지명 확실히 기입할것([링크](https://www.inflearn.com/community/questions/95639/springboot%EC%97%90%EC%84%9C-controller%EB%A5%BC-%EB%AA%BB%EC%B0%BE%EB%8A%94-%EA%B2%83%EA%B0%99%EC%95%84%EC%9A%94-%EC%97%90%EB%9F%AC%EB%A9%94%EC%84%B8%EC%A7%80-%EC%97%86%EA%B3%A0-url%EC%A3%BC%EC%86%8C%EB%A1%9C-%EA%B0%80%EB%A9%B4-whitelabel-error-page%EA%B0%80-%EB%9C%B9%EB%8B%88%EB%8B%A4?srsltid=AfmBOopaPs90v9azL2qrcXPwX0duV9_lv9u_fnkXuxG70DA7D2Ex28DW))
+
+* 스프링부트에서 컨트롤러를 실행하지 못하는 오류 발생
+
+* SbbApplication.java가 자기 경로를 못찾아서 생긴 오류
+
+* SbbApplication이 있는 곳과 같은 패키지 이거나 그 하위 패키지만 스프링 부트가 자동으로 컴포넌트 스캔을 해서 인식한다.
+
+* 해서 패키지명을 스프링부트 네이밍 컨벤션에 맞추어서 기입해야 한다.
+
+* 해결
+
+  ![image-20250416173603135](./assets/image-20250416173603135.png)
+
 ## 질문 목록 만들기
+
+SBB의 핵심 기능인 질문 목록이 담긴 페이지를 만든다.
+
+현재 구상하고 있는 질문 목록은 다음 주소에 접속할 때 등장해야 한다.
+
+```
+http://localhost:8080/question/list
+```
+
+로컬 서버를 실행한 뒤, 웹 브라우저에서 해당 주소를 입력하여 접속한다. 현재는 404 오류 페이지가 나타난다.
 
 ### 질문 목록 URL 매핑하기
 
+1. 앞서 등장한 404 오류를 해결하려면 /question/list URL을 매핑하기 위한 컨트롤러가 필요하다. 먼저, QuestionController.java 파일을 생성해 다음과 같이 작성한다. 이때 아까 만든 question 패키지 안에 QuestionController.java 파일을 생성한다.
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   @Controller
+   public class QuestionController {
+   
+   	@GetMapping("/question/list")
+   	@ResponseBody
+   	public String list() {
+   		return "question list";
+   	}
+   	
+   }
+   ```
+
+2. 이렇게 입력하고 로컬 서버를 실행한 뒤, 다시 localhost:8080/question/list에 접속한다. 
+
 ### 템플릿 설정하기
+
+앞서 문자열 'question list'를 직접 자바 코드로 작성하여 브라우저에 리턴했다. 하지만 보통 브라우저에 응답하는 문자열은 이 예처럼 자바 코드에서 직접 만들지 않는다. 일반적으로 많이 사용하는 방식은 템플릿 방식이다. 템플릿은 자바 코드를 삽입할 수 있는 HTML 형식의 파일을 말한다.
+
+이러한 템플릿을 사용하기 위해 스프링 부트에서는 템플릿 엔진을 지원한다. 템플릿 엔진에는 Thymeleaf, Mustache, Groovy, Freemaker, Velocity 등이 있는데, 이 프로젝트에서는 스프링 진영에서 추천하는 타임리프 템플릿 엔진을 사용한다.
+
+타임리프를 사용하려면 먼저 설치가 필요하다. 다음과 같이 build.gradle 파일을 수정하여 타임리프를 설치한다.
+
+```
+...
+
+// Template Engine
+implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect'
+
+...
+```
 
 ### 템플릿 사용하기
 
+템플릿을 사용할 수 있는 환경을 갖추었으니 이번에는 템플릿을 생성해 질문 목록 페이지를 만든다.
+
+1. src/main/resources 디렉터리에서 templates를 선택한 후, question_list.html를 입력해서 템플릿을 생성한다.
+
+2. question_list.html 파일의 내용을 다음과 같이 작성한다.
+
+   ```html
+   <h2>Hello Template</h2>
+   ```
+
+3. 다시 QuestionController.java 파일로 돌아가 다음과 같이 수정한다.
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   @Controller
+   public class QuestionController {
+   
+   	@GetMapping("/question/list")
+   	public String list() {
+   		return "question_list";
+   	}
+   	
+   }
+   ```
+
+   이제 템플릿을 사용하기 때문에 기존에 사용하던 @ResponseBody 어노테이션은 필요 없으므로 삭제한다. 그리고 list 메서드에서 question_list.html 템플릿 파일 이름인 'question_list'를 리턴한다.
+
+4. 그리고 다시 로컬 서버를 실행한 뒤 localhost:8080/question/list에 접속하면 question_list.html 파일에 작성한 내용이 브라우저에 출력된다.
+
 ### 데이터를 템플릿에 전달하기
+
+이제 질문 목록이 담긴 데이터를 조회하여 이를 템플릿을 통해 화면에 전달해 보려고 한다. 질문 목록과 관련된 데이터를 조회하려면 QuestionRepository를 사용해야 한다. QuestionRepository로 조회한 질문 목록 데이터는 Model 클래스를 사용하여 템플릿에 전달할 수 있다.
+
+다음과 같이 QuestionController.java를 수정한다.
+
+```java
+package com.mysite.sbb.question;
+
+import java.util.List;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+@Controller
+public class QuestionController {
+	
+	private final QuestionRepository questionRepository;
+
+	@GetMapping("/question/list")
+	public String list(Model model) {
+		List<Question> questionList = this.questionRepository.findAll();
+		model.addAttribute("questionList", questionList);
+		return "question_list";
+	}
+	
+}
+```
+
+@RequiredArgsConstructor 어노테이션의 생성자 방식으로 questionRepository 객체를 주입했다. @RequiredArgsConstructor는 롬복이 제공하는 어노테이션으로, final이 붙은 속성을 포함하는 생성자를 자동으로 만들어 주는 역할을 한다. 따라서 스프링 부트가 내부적으로 QuestionController를 생성할 때 롬복으로 만들어진 생성자에 의해 questionRepository 객체가 자동으로 주입된다.
+
+그리고 QuestionRepository의 findAll 메서드를 사용하여 질문 목록 데이터인 questionList를 생성하고 Model 객체에 'questionList'라는 이름으로 저장했다. 여기서 Model 객체는 자바 클래스와 템플릿 간의 연결 고리 역할을 한다. Model 객체에 값을 담아 두면 템플릿에서 그 값을 사용할 수 있다. Model 객체는 따로 생성할 필요 없이 컨트롤러의 메서드에 매개변수로 지정하기만 하면 스프링 부트가 자동으로 Model 객체를 생성한다.
 
 ### 데이터를 화면에 출력하기
 
+DB로부터 데이터를 조회하여 Model 객체에 저장하였고, 이제 Model 객체를 통해 전달받은 데이터들을 템플릿에서 활용할 준비를 마쳤다. 그렇다면 이제 질문 목록 데이터를 화면에 노출한다.
+
+1. 이전에 입력한 내용을 지우고 다음과 같이 question_list.html 템플릿을 수정한다.
+
+   ```html
+   <table>
+   	<thead>
+   		<tr>			
+   			<th>제목</th>
+   			<th>작성일시</th>
+   		</tr>
+   	</thead>
+   	<tbody>
+   		<tr th:each="question : ${questionList}">
+   			<td th:text="${question.subject}"></td>
+   			<td th:text="${question.createDate}"></td>
+   		</tr>
+   	</tbody>
+   </table>
+   ```
+
+   질문 목록을 HTML의 테이블 구조로 표시했다. 여기서 눈여겨볼 코드는 th:each="question:${questionList}"이다. 여기서 th:는 타임리프에서 사용하는 속성임을 나타내는데, 바로 이 부분이 자바 코드와 연결된다. question_list.html 파일에 사용한 타임리프 속성들을 살펴본다.
+
+   ```html
+   <tr th:each="question : ${questionList}">
+   ```
+
+   QuestionController의 list 메서드에서 조회한 질문 목록 데이터를 'questionList'라는 이름으로 Model 객체에 저장했다. 타임리프는 Model 객체에 저장한 questionList를 ${questionList}로 읽을 수 있다. 위의 코드는 questionList에 저장된 데이터를 하나씩 꺼내 question 변수에 대입한 후 questionList의 개수만큼 반복하며 `<tr> ... </tr>` 문장을 출력하라는 의미이다. 자바의 for each 문을 떠올리면 쉽게 이해할 수 있다.
+
+   다음 코드는 question 객체의 subject를 `<td>` 태그로 출력한다.
+
+   ```html
+   <td th:text="${question.subject}"></td>
+   ```
+
+   다음 코드도 question 객체의 createDate를 출력한다.
+
+   ```html
+   <td th:text="${question.createDate}"></td>
+   ```
+
+2. 브라우저에 다시 localhost:8080/question/list에 접속한다.
+
+cf) : 자주 사용하는 타임리프의 3가지 속성
+
+타임리프의 여러 속성 중 다음 3가지 속성을 자주 사용한다. 이 3가지만 알아도 일반적인 화면을 만들기에 충분하다.
+
+1. 분기문 속성
+
+   if문, else if문과 같은 분기문은 다음과 같이 사용된다.
+
+   ```
+   th:if="${question != null}"
+   ```
+
+   이 경우 question 객체가 null이 아닌 경우에만 이 속성을 포함한 요소가 표시된다.
+
+2. 반복문 속성
+
+   th:each 반복문 속성은 자바의 for each 문과 유사하다.
+
+   ```
+   th:each="question : ${questionList}"
+   ```
+
+   반복문 속성은 다음과 같이 사용할 수도 있다.
+
+   ```
+   th:each="question, loop : ${questionList}"
+   ```
+
+   여기서 추가한 loop 객체를 이용하여 루프 내에서 다음과 같이 사용할 수 있다.
+
+   * loop.index
+
+     루프의 순서(루프의 반복 순서, 0부터 1씩 증가)
+
+   * loop.count
+
+     루프의 순서(루프의 반복 순서, 1부터 1씩 증가)
+
+   * loop.size
+
+     반복 객체의 요소 개수(예를 들어 questionList의 요소 개수)
+
+   * loop.first
+
+     루프의 첫 번째 순서인 경우 true
+
+   * loop.last
+
+     루프의 마지막 순서인 경우 true
+
+   * loop.odd
+
+     루프의 홀수 번째 순서인 경우 true
+
+   * loop.even
+
+     루프의 짝수 번째 순서인 경우 true
+
+   * loop.current
+
+     현재 대입된 객체(여기서는 question과 동일)
+
+3. 텍스트 속성
+
+   th:text=(속성)은 해당 요소의 텍스트값을 출력한다.
+
+   ```
+   th:text="${question.subject}"
+   ```
+
+   텍스트는 th:text 속성 대신에 다음처럼 대괄호를 사용하여 값을 직접 출력할 수 있다.
+
+   ```html
+   <tr th:each="question : ${questionList}">
+   	<td>[[${question.subject}]]</td>
+   	<td>[[${question.createDate}]]</td>    
+   </tr>
+   ```
+
+
 ## 루트 URL 사용하기
+
+서버의 URL을 요청할 때 도메인명 뒤에 아무런 주소도 덧붙이지 않는 URL을 루트 URL이라고 한다. SBB 서비스에서 질문 목록을 메인 페이지로 정하고, 루트 URL을 요청했을 때 질문 목록 화면으로 이동되도록 만들어 보자. 즉, 웹 브라우저에서 http://localhost:8080/question/list 대신 루트 URL인 http://localhost:8080으로 접속해도 질문 목록 화면을 출력하도록 해보자.
+
+현재 루트 URL를 매핑하지 않아서 브라우저에서 루트 URL에 접속하면 다음과 같은 404 오류 페이지가 나타난다.
+
+루트 URL 호출 시 404 오류 페이지 대신 질문 목록 화면을 출력하기 위해 다음과 같이 MainController.java를 수정해 보자.
+
+*MainController.java*
+
+```java
+package com.mysite.sbb;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+@Controller
+public class MainController {
+	@GetMapping("/")
+	@ResponseBody
+	public String index() {
+		return "안녕하세요 sbb에 오신 것을 환영한다.";
+	}
+	
+	@GetMapping("/")
+	public String root() {
+		return "redirect:/question/list";
+	}
+}
+```
+
+이와 같이 root 메서드를 추가하고 / URL을 매핑했다. 리턴 문자열 'redirect:/question/list'는 /question/list URL로 페이지를 리다이렉트하라는 명령어이다. 여기서 리다이렉트란 클라이언트가 요청하면 새로운 URL로 전송하는 것을 의미한다.
+
+이제 http://localhost:8080 페이지에 접속하면 root 메서드가 실행되어 질문 목록이 표시되는 것을 확인할 수 있다.
 
 ## 서비스 활용하기
 
+앞에서 질문 목록을 만들어 보았다. 이제 질문 목록에서 질문의 제목을 클릭하면 해당 질문과 관련된 상세 내용이 담긴 화면으로 넘어가게끔 하려고 한다. 하지만 그 전에 먼저 서비스란 무엇인지 알고 넘어가자.
+
+우리는 그동안 QuestionController에서 QuestionRepository를 직접 접근해 질문 목록 데이터를 조회했다. 하지만 대부분의 규모 있는 스프링 부트 프로젝트는 컨트롤러에서 리포지터리를 직접 호출하지 않고 중간에 서비스를 두어 데이터를 처리한다. 이러한 서비스를 사용하여 SBB 프로그램을 개선해 보자.
+
 ### 서비스가 필요한 이유
+
+서비스란 무엇일까? 서비스는 간단히 말해 스프링에서 데이터 처리를 위해 작성하는 클래스이다. 우리는 그동안 서비스 없이도 웹 프로그램을 동작시키는 데 문제가 없었다. 그런데 굳이 서비스를 사용해야 할까? 서비스가 필요한 이유를 좀 더 자세히 알아보자.
 
 #### 복잡한 코드를 모듈화할 수 있다
 
+예를 들어 A라는 컨트롤러가 어떤 기능을 수행하기 위해 C라는 리포지터리의 메서드 a, b, c를 순서대로 실행해야 한다고 가정해 보자. 그리고 B라는 컨트롤러도 A 컨트롤러와 동일한 기능을 수행해야 한다면 A, B 컨트롤러가 C 리포지터리의 메서드 a, b, c 메서드를 호출하는 기능을 서비스로 만들고 컨트롤러에서 이 서비스를 호출하여 사용할 수 있다. 즉, 서비스를 사용하면 이와 같은 모듈화가 가능하다.
+
 #### 엔티티 객체를 DTO 객체로 변환할 수 있다
+
+우리가 앞에서 작성한 Question, Answer 클래스는 모두 엔티티 클래스이다. 엔티티 클래스는 DB와 직접 맞닿아 있는 클래스이므로 컨트롤러 또는 타임리프와 같은 템플릿 엔진에 전달해 사용하는 것은 좋지 않다. 왜냐하면 엔티티 객체에는 민감한 데이터가 포함될 수 있는데, 타임리프에서 엔티티 객체를 직접 사용하면 민감한 데이터가 노출될 위험이 있기 때문이다.
+
+이러한 이유로 Question, Answer 같은 엔티티 클래스는 컨트롤러에서 사용하지 않도록 설계하는 것이 좋다. 그래서 Question, Answer를 대신해 사용할 DTO 클래스가 필요하다. 그리고 Question, Answer 등의 엔티티 객체를 DTO 객체로 변환하는 작업도 필요하다. 그러면 엔티티 객체를 DTO 객체로 변환하는 일은 어디서 처리해야 할까? 이때도 서비스가 필요하다. 서비스는 컨트롤러와 리포지터리의 중간에서 엔티티 객체와 DTO 객체를 서로 변환하여 양방향에 전달하는 역할을 한다.
 
 ### 서비스 만들기
 
+컨트롤러에서 리포지터리 대신 사용할 서비스를 만들어 보자. 먼저 src/main/java 디렉터리의 com.mysite.sbb.question 패키지에 QuestionService.java 파일을 만들어 다음과 같은 내용을 작성해 보자.
+
+*/question/QuestionService.java*
+
+```java
+package com.mysite.sbb.question;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+@Service
+public class QuestionService {
+	
+	private final QuestionRepository questionRepository;
+	
+	public List<Question> getList() {
+		
+		return this.questionRepository.findAll();
+		
+	}
+
+}
+```
+
+생성한 클래스를 서비스로 만들기 위해서는 이와 같이 클래스명 위에 @Service 어노테이션을 붙이면 된다. @Controller, @Entity 등과 마찬가지로 스프링 부트는 @Service 어노테이션이 붙은 클래스는 서비스로 인식하므로 서비스를 쉽게 생성할 수 있다.
+
+이 코드에서는 질문 목록 데이터를 조회하여 리턴하는 getList 메서드를 추가했다. getList 메서드의 내용을 살펴보면 컨트롤러(QuestionController)에서 리포지터리를 사용했던 부분을 그대로 옮긴 것을 알 수 있다.
+
 ### 컨트롤러에서 서비스 사용하기
+
+QuestionController.java 파일로 돌아가 QuestionController가 리포지터리 대신 서비스를 사용하도록 다음과 같이 수정해 보자.
+
+*/question/QuestionController.java*
+
+```java
+package com.mysite.sbb.question;
+
+import java.util.List;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+@Controller
+public class QuestionController {
+	
+	private final QuestionService questionService;
+
+	@GetMapping("/question/list")
+	public String list(Model model) {
+		List<Question> questionList = this.questionService.getList():
+		model.addAttribute("questionList", questionList);
+		return "question_list";
+	}
+	
+}
+```
+
+브라우저로 http://localhost:8080/question/list 페이지에 접속하면 리포지터리를 사용했을 때와 동일한 화면을 볼 수 있다.
+
+앞으로 작성할 다른 컨트롤러도 이와 같이 리포지터리를 직접 사용하지 않고 컨트롤러 - 서비스 - 리포지터리 순서로 접근하는 과정을 거쳐 데이터를 처리할 것이다. 
 
 ## 상세 페이지 만들기
 
+이번 절에서는 다음과 같이 질문 목록에서 질문의 제목을 클릭하면 해당 질문과 관련된 상세 내용이 담긴 페이지로 넘어가게끔 기능을 추가해 보자.
+
 ### 질문 목록에 링크 추가하기
+
+먼저, 질문 목록의 제목을 클릭하면 상세 화면이 호출되도록 제목에 링크를 추가하자. 다음과 같이 질문 목록 템플릿인 question_list.html을 수정해 보자.
+
+*/templates/question_list.html*
+
+```html
+<table>
+	<thead>
+		<tr>			
+			<th>제목</th>
+			<th>작성일시</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr th:each="question, index : ${questionList}">
+			<td>
+				<a th:href="@{|/question/detail/${question.id}|}" th:text="${question.subject}"></a>
+			</td>
+			<td th:text="${question.createDate}"></td>
+		</tr>
+	</tbody>
+</table>
+```
+
+`<td>` 태크를 통해 질문 목록의 제목을 텍스트로 출력하던 것에서 질문의 상세 내용이 담긴 웹페이지로 이동할 수 있는 링크로 변경했다.
+
+제목에 상세 페이지 URL을 연결하기 위해 타임리프의 th:href 속성을 사용한다. 이때 URL은 반드시 @{와 } 문자 사이에 입력해야 한다. 여기서는 문자열 /question/detail/과 ${question.id} 값이 조합되어 /question/detail/${question.id}로 작성했다.
+
+만약 좌우에 | 없이 다음과 같이 사용하면 오류가 발생한다.
+
+```html
+<a href="@{/question/detail/${question.id}}" th:text="${question.subject}"></a>
+```
+
+타임리프에서는 /question/detail/과 같은 문자열과 ${question.id}와 같은 자바 객체의 값을 더할 때는 반드시 다음처럼 |로 좌우를 감싸 주어야 한다.
+
+```html
+<a href="@{|/question/detail/${question.id}|}" th:text="${question.subject}"></a>
+```
 
 ### 상세 페이지 컨트롤러 만들기
 
+1. 브라우저를 통해 질문 목록 페이지에 접속하여 링크를 클릭해 보자. 아마도 다음과 같은 오류가 발생할 것이다.
+
+   아직 http://localhost:8080/question/detail/2를 매핑하지 않았기 때문에 404 오류가 발생한다.
+
+2. 다음과 같이 오류를 해결하기 위해 QuestionController에 질문 상세 페이지 URL을 매핑해 보자.
+
+   */question/QuestionController.java*
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import java.util.List;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.ui.Model;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.PathVariable;
+   
+   import lombok.RequiredArgsConstructor;
+   
+   @RequiredArgsConstructor
+   @Controller
+   public class QuestionController {
+   	
+   	private final QuestionService questionService;
+   
+   	@GetMapping("/question/list")
+   	public String list(Model model) {
+   		List<Question> questionList = this.questionService.getList();
+   		model.addAttribute("questionList", questionList);
+   		return "question_list";
+   	}
+   	
+   	@GetMapping("/question/detail/{id}")
+   	public String detail(Model model, @PathVariable("id") Integer id) {
+   		return "question_detail";
+   	}
+   	
+   }
+   ```
+
+   요청한 URL인 http://localhost:8080/question/detail/2의 숫자 2처럼 변하는 id값을 얻을 때에는 @PathVariable 어노테이션을 사용한다. 이때 @GetMapping(value = "/question/detail/{id}")에서 사용한 id와 @PathVariable("id")의 매개변수 이름이 이와 같이 동일해야 한다. 다시 로컬 서버를 실행한 후, 브라우저에서 URL을 입력해 보자.
+
+3. 그런데 코드를 수정하고 다시 URL을 호출하면 이번에는 404 대신 500 오류가 발생할 것이다. 왜냐하면 응답으로 리턴한 question_detail 템플릿이 없기 때문이다. templates에 question_detail.html 파일을 새로 만들어 다음 내용을 작성해 보자.
+
+   */templates/question_detail.html*
+
+   ```html
+   <h1>제목</h1>
+   <div>내용</div>
+   ```
+
+4. 다시 로컬 서버를 재시작한 뒤, URL을 요청하면 오류 없이 다음과 같은 화면이 나타날 것이다.
+
 ### 상세 페이지에 서비스 사용하기
+
+이제 화면에 출력한 '제목'과 '내용' 문자열 대신 질문 데이터의 제목(subject)과 내용(content)을 출력해 보자. 먼저, 제목과 내용에 들어갈 질문 데이터를 조회해 보자.
+
+1. 질문 데이터를 조회하기 위해서 앞에서 만든 QuestionService.java를 다음과 같이 수정해 보자.
+
+   *QuestionService.java*
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import java.util.List;
+   import java.util.Optional;
+   
+   import com.mysite.sbb.DataNotFoundException;
+   
+   import org.springframework.stereotype.Service;
+   
+   import lombok.RequiredArgsConstructor;
+   
+   @RequiredArgsConstructor
+   @Service
+   public class QuestionService {
+   	
+   	private final QuestionRepository questionRepository;
+   	
+   	public List<Question> getList() {
+   		
+   		return this.questionRepository.findAll();
+   		
+   	}
+   	
+   	public Question getQuestion(Integer id) {
+   		Optional<Question> question = this.questionRepository.findById(id);
+   		System.out.println("question : " + question);
+   		if(question.isPresent()) {
+   			return question.get();
+   		} else {
+   			throw new DataNotFoundException("question not found");
+   		}
+   	}
+   
+   }
+   ```
+
+   id값으로 질문 데이터를 조회하기 위해 getQuestion 메서드를 추가했다. 리포지터리로 얻은 Question 객체는 Optional 객체이므로 if ~ else 문을 통해 isPresent 메서드로 해당 데이터(여기서는 id값)가 존재하는지 검사하는 과정이 필요하다. 만약 id값에 해당하는 질문 데이터가 없을 경우에는 예외 클래스인 DataNotFoundException이 실행되도록 했다.
+
+2. 사실 DataNotFoundException 클래스는 아직 존재하지 않아 컴파일 오류가 발생한다. 다음과 같이 com.mysite.sbb 패키지에 자바 파일을 추가로 만들어 DataNotFoundException 클래스를 정의해 보자.
+
+   *DataNotFoundException.java*
+
+   ```java
+   package com.mysite.sbb;
+   
+   import org.springframework.http.HttpStatus;
+   import org.springframework.web.bind.annotation.ResponseStatus;
+   
+   @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "entity not found")
+   public class DataNotFoundException extends RuntimeException {
+   	
+   	private static final long serialVersionUID = 1L;
+   	public DataNotFoundException(String message) {
+   		super(message);
+   	}
+   	
+   }
+   ```
+
+   DataNotFoundException은 데이터베이스에서 특정 엔티티 또는 데이터를 찾을 수 없을 때 발생시키는 예외 클래스를 만들었다. 이 예외가 발생하면 스프링 부트는 설정된 HTTP 상태 코드(HttpStatus.NOT_FOUND)와 이유("entity not found")를 포함한 응답을 생성하여 클라이언트에게 반환하게 된다. 여기서는 404 오류를 반환하도록 작성했다.
+
+3. 그리고 QuestionController.java로 돌아가 QuestionService의 getQuestion 메서드를 호출하여 Question 객체를 템플릿에 전달할 수 있도록 다음과 같이 수정하자.
+
+   */question/QuestionController.java*
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import java.util.List;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.ui.Model;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.PathVariable;
+   
+   import lombok.RequiredArgsConstructor;
+   
+   @RequiredArgsConstructor
+   @Controller
+   public class QuestionController {
+   	
+   	private final QuestionService questionService;
+   
+   	@GetMapping("/question/list")
+   	public String list(Model model) {
+   		List<Question> questionList = this.questionService.getList();
+   		model.addAttribute("questionList", questionList);
+   		System.out.println("questionList : " + questionList);
+   		return "question_list";
+   	}
+   	
+   	@GetMapping(value = "/question/detail/{id}")
+   	public String detail(Model model, @PathVariable("id") Integer id) {
+   		Question question = this.questionService.getQuestion(id);
+   		model.addAttribute("question", question);
+   		System.out.println("question : " + question);
+   		return "question_detail";
+   	}
+   	
+   }
+   ```
 
 ### 상세 페이지 출력하기
 
+'제목'과 '내용' 문자열 대신 질문의 제목(subject)과 내용(content)을 화면에 출력해보자.
+
+1. 상세 페이지 템플릿인 question_detail 파일로 돌아가 다음과 같이 수정해 보자. 이때 QuestionController의 detail 메서드에서 Model 객체에 'question'이라는 이름으로 Question 객체를 저장했으므로 다음과 같이 작성할 수 있다.
+
+   */templates/question_detail.html*
+
+   ```html
+   <h1 th:text="${question.subject}"></h1>
+   <div th:text="${question.content}"></div>
+   ```
+
+2. 상세 페이지 요청
+
+   ![image-20250430193130144](./assets/image-20250430193130144.png)
+
+   조회한 질문 데이터의 제목과 내용이 화면에 잘 출력된 것을 확인할 수 있다.
+
+3. 33과 같은 존재하지 않는 id값을 입력해 페이지를 요청하면 404 Not found 오류가 발생한다.
+
 ## URL 프리픽스 알아 두기
+
+이제 질문 상세 페이지에서 답변을 입력할 수 있도록 프로그램을 만들어 볼 것이다. 이와 같은 내용을 배우기 전에 QuestionController.java의 URL 매핑을 잠시 살펴보자.
+
+1. @GetMapping("./question/list")
+2. @GetMapping(value = "/question/detail/{id}")
+
+URL의 프리픽스가 모두 /question으로 시작한다는 것을 알 수 있다. 프리픽스란 URL의 접두사 또는 시작 부분을 가리키는 말로, QuestionController에 속하는 URL 매핑은 항상 /question 프리픽스로 시작하도록 설정할 수 있다. QuestionController 클래스명 위에 다음과 같이 @RequestMapping("/question") 어노테이션을 추가하고, 메서드 단위에서는 /question을 생략하고 그 뒷부분만 적으면 된다.
+
+이 내용을 바탕으로 다음과 같이 QuestionController.java를 수정해 보자.
+
+*/question/QuestionController.java*
+
+```java
+package com.mysite.sbb.question;
+
+import java.util.List;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import lombok.RequiredArgsConstructor;
+
+@RequestMapping("/question")
+@RequiredArgsConstructor
+@Controller
+public class QuestionController {
+	
+	private final QuestionService questionService;
+
+	@GetMapping("/list")
+	public String list(Model model) {
+		List<Question> questionList = this.questionService.getList();
+		model.addAttribute("questionList", questionList);
+		System.out.println("questionList : " + questionList);
+		return "question_list";
+	}
+	
+	@GetMapping(value = "/detail/{id}")
+	public String detail(Model model, @PathVariable("id") Integer id) {
+		Question question = this.questionService.getQuestion(id);
+		model.addAttribute("question", question);
+		System.out.println("question : " + question);
+		return "question_detail";
+	}
+	
+}
+```
+
+list 메서드의 URL 매핑은 /list이지만 @RequestMapping 어노테이션에서 이미 /question URL을 매핑했기 때문에 /question + /list가 되어 최종 URL 매핑은 /question/list가 된다.
+
+그러므로 이와 같이 수정하면 기존과 완전히 동일하게 URL 매핑이 이루어진다. 다만, 앞으로 QuestionController.java에서 URL을 매핑할 때 반드시 /question으로 시작한다는 것을 기억해 두자.
 
 ## 답변 기능 만들기
 
+실습을 통해 우리는 질문 목록을 확인하고, 질문 제목을 클릭하면 내용을 상세하게 볼 수 있는 페이지까지 만들어 보았다. 이번에는 질문에 답변을 입력하고, 입력한 답변을 질문 상세 페이지에서 확인할 수 있도록 구현해 보자.
+
 ### 텍스트 창과 등록 버튼 만들기
+
+질문 상세 페이지에서 답변을 입력하는 텍스트 창을 만들고, 답변을 등록하기 위한 [답변 등록] 버튼을 생성해 보자.
+
+1. 상세 페이지 템플릿인 question_detail.html에 답변 저장을 위한 form, textarea, input 요소를 다음과 같이 추가해 보자.
+
+   */templates/question_detail.html*
+
+   ```html
+   <h1 th:text="${question.subject}"></h1>
+   <div th:text="${question.content}"></div>
+   
+   <form th:action="@{|/answer/create/${question.id}|}" method="post">
+   	 <textarea name="content" id="content" rows="15"></textarea>
+   	 <input type="submit" value="답변 등록 ">
+   </form>
+   ```
+
+   [답변 등록] 버튼을 누르면 전송되는 form의 action은 타임리프의 th:action 속성으로 생성한다. 이제 텍스트 창에 답변을 작성하고, 답변 등록 버튼을 클릭하면 /answer/create/2(여기서 '2'는 질문 데이터의 고유 번호를 의미한다.)와 같은 URL이 post 방식으로 호출될 것이다.
+
+2. 코드를 추가했으면 로컬 서버를 실행한 후, 질문 상세 페이지에 접속해 보자.
+
+   이와 같이 답변을 입력할 수 있는 텍스트 창과 [답변 등록] 버튼이 생성되었다.
+
+3. 이제 [답변 등록] 버튼을 누르면 POST 방식을 /answer/create/${question.id} URL이 호출될 것이다. 하지만 아직 /answer/create/${question.id} URL을 매핑하지 않았으므로 버튼을 누르면 다음과 같은 404 페이지가 나타난다.
+
+   이 오류를 해결하려면 답변 컨트롤러를 만들고 http://localhost:8080/answer/create/2 URL을 매핑해야 한다.
 
 ### 답변 컨트롤러 만들기
 
+앞에서 질문 컨트롤러(QuestionController.java)를 만들었듯이 답변 컨트롤러를 만들어 URL을 매핑해 보자. 그러기 위해 이번에는 src/main/java 디렉터리의 com.mysite.sbb.answer 패키지에 답변 컨트롤러로 AnswerController.java 파일을 만들어 다음과 같은 내용을 작성해 보자.
+
+*/answer/AnswerController.java*
+
+```java
+package com.mysite.sbb.answer;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.mysite.sbb.question.Question;
+import com.mysite.sbb.question.QuestionService;
+
+import lombok.RequiredArgsConstructor;
+
+@RequestMapping("/answer")
+@RequiredArgsConstructor
+@Controller
+public class AnswerController {
+
+	private final QuestionService questionService;
+	
+	@PostMapping("/create/{id}")
+	public String createAnswer(Model model, @PathVariable("id") Integer id, @RequestParam(value="content") String content) {
+		
+		Question question = this.questionService.getQuestion(id);
+		// TODO : 답변 저장 기능
+		return String.format("redirect:/question/detail/%s", id);
+	}
+
+}
+```
+
+/answer/create/{id}와 같은 URL 요청 시 createAnswer 메서드가 호출되도록 @PostMapping으로 매핑했다. @PostMapping 어노테이션은 @GetMapping과 동일하게 URL 매핑을 담당하는 역할을 하지만, POST 요청을 처리하는 경우에 사용한다.
+
+그리고 질문 컨트롤러의 detail 메서드와 달리 createAnswer 메서드의 매개변수에는 @RequestParam(value="content") String content가 추가되었다. 이는 앞서 작성한 템플릿(question_detail.html)에서 답변으로 입력한 내용(content)을 얻으려고 추가한 것이다. 템플릿의 답변 내용에 해당하는 `<textarea>`의 name 속성명이 content이므로 여기서도 변수명을 content로 사용한다. /create/{id}에서 {id}는 질문 엔티티의 id이므로 이 id값으로 질문을 조회하고 값이 없을 경우에는 404 오류가 발생할 것이다.
+
 ### 답변 서비스 만들기
 
+이번에는 입력받은 답변을 저장하는 코드를 작성해 보자. 답변을 저장하려면 답변 서비스가 필요하다.
+
+1. 먼저, com.mysite.sbb.answer 패키지에 AnswerService.java 파일을 만들어 다음과 가은 내용을 작성해 보자.
+
+   */answer/AnswerService.java*
+
+   ```java
+   package com.mysite.sbb.answer;
+   
+   import java.time.LocalDateTime;
+   
+   import org.springframework.stereotype.Service;
+   
+   import com.mysite.sbb.question.Question;
+   
+   import lombok.RequiredArgsConstructor;
+   
+   @RequiredArgsConstructor
+   @Service
+   public class AnswerService {
+   	
+   	private final AnswerRepository answerRepository;
+   	
+   	public void create(Question question, String content) {
+   		Answer answer = new Answer();
+   		answer.setContent(content);
+   		answer.setCreateDate(LocalDateTime.now());
+   		answer.setQuestion(question);
+   		this.answerRepository.save(answer);
+   	}
+   
+   }
+   ```
+
+   AnswerService에는 답변(Answer)을 생성하기 위해 create 메서드를 추가했다. create 메서드는 입력받은 2개의 매개변수인 question과 content를 사용하여 Answer 객체를 생성하여 저장했다.
+
+2. 이제 작성한 create 메서드를 AnswerController에서 사용해 보자.
+
+   */answer/AnswerController.java*
+
+   ```java
+   package com.mysite.sbb.answer;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.ui.Model;
+   import org.springframework.web.bind.annotation.PathVariable;
+   import org.springframework.web.bind.annotation.PostMapping;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestParam;
+   
+   import com.mysite.sbb.question.Question;
+   import com.mysite.sbb.question.QuestionService;
+   
+   import lombok.RequiredArgsConstructor;
+   
+   @RequestMapping("/answer")
+   @RequiredArgsConstructor
+   @Controller
+   public class AnswerController {
+   
+   	private final QuestionService questionService;
+       private final AnswerService answerService;
+   	
+   	@PostMapping("/create/{id}")
+   	public String createAnswer(Model model, @PathVariable("id") Integer id, @RequestParam(value="content") String content) {
+   		
+   		Question question = this.questionService.getQuestion(id);
+   		this.answerService.create(question, content);
+   		return String.format("redirect:/question/detail/%s", id);
+   	}
+   
+   }
+   ```
+
+   TODO 주석문을 삭제하고 그 자리에 AnswerService의 create 메서드를 호출하여 답변을 저장할 수 있게 했다.
+
+3. 다시 질문 상세 페이지(http://localhost:8080/question/detail/2)에 접속하여 텍스트창에 아무 값이나 입력하고 [답변 등록] 버튼을 클릭해 보자.
+
+   현 상태에서는 확인할 수 없지만 답변을 잘 저장되었다. 그런데 왜 화면에는 아무런 변화가 없을까? 왜냐하면 우리는 아직 등록한 답변 내용을 화면에 표시하도록 템플릿에 추가하지 않았기 때문이다.
+
 ### 상세 페이지에 답변 표시하기
+
+이제 텍스트 창을 통해 입력한 답변이 상세 화면에 표시되도록 만들어 보자.
+
+1. 답변은 질문 아래에 보이도록 상세 페이지 템플릿인 question_detail.html에 다음과 같이 추가해 보자.
+
+   */templates/question_detail.html*
+
+   ```html
+   <h1 th:text="${question.subject}"></h1>
+   <div th:text="${question.content}"></div>
+   <h5 th:text="|${#list.size(question.answerList)}개의 답변이 있습니다.|"></h5>
+   <div>
+   	<ul>
+   		<li th:each="answer : ${question.answerList}" th:text="${answer.content}"></li>
+   	</ul>
+   </div>
+   
+   <form th:action="@{|/answer/create/${question.id}|}" method="post">
+   	 <textarea name="content" id="content" rows="15"></textarea>
+   	 <input type="submit" value="답변 등록 ">
+   </form>
+   ```
+
+   기존 코드에 답변을 확인할 수 있는 영역을 추가했다. #lists.size(question.answerList)는 답변 개수를 의미한다. 따라서 '1개의 답변이 있습니다.'와 같은 문장이 화면에 표시될 것이다.
+
+   `<div>` 태그로 답변 리스트에 관한 내용을 묶었다. 그리고 `<ul>` 태그를 사용하여 질문에 연결된 답변을 모두 표시했다.
+
+2. 이제 질문 상세 페이지를 새로 고침 하면 텍스트 창에 입력한 답변이 보일 것이다.
 
 ## 웹 페이지 디자인하기
 
 ### 스태틱 디렉터리와 스타일시트 이해하기
 
+스타일시트 파일, 즉 css 파일은 html 파일과 달리 스태틱 디렉터리에 저장해야 한다. 스프링 부트의 스태틱 디렉터리는 오른쪽과 같이 src/main/resources 디렉터리 안에 있다.
+
+스태틱 디렉터리를 확인했으니 앞으로 css 파일은 스태틱 디렉터리에 저장한다.
+
+화면을 본격적으로 디자인하기에 앞서 먼저 스타일시트 파일(style.css)을 만들어 보자. static 디렉터리를 선택한 후, 마우스 오른쪽 버튼을 누르고 New - File을 클릭한다. 파일 이름으로 style.css를 입력하여 스타일시트 파일을 만든다. 그리고 다음 내용을 입력해 보자.
+
+*/static/style.css*
+
+```css
+textarea {
+	width: 100%;
+}
+
+input[type=submit] {
+	margin-top:10px;
+}
+```
+
+style.css 파일에 질문 상세 화면의 디자인 요소들을 작성했다. 답변 등록 시 사용하는 텍스트창의 넓이를 100%로 하고 [답변 등록] 버튼 상단에 마진을 10px로 설정했다.
+
 ### 템플릿에 스타일 적용하기
 
+1. 이제 작성한 스타일시트 파일(style.css 파일)을 질문 상세 페이지 템플릿에 적용해 보자.
+
+   */templates/question_detail.html*
+
+   ```html
+   <link rel="stylesheet" type="text/css" th:href="@{/style.css}">
+   
+   <h1 th:text="${question.subject}"></h1>
+   <div th:text="${question.content}"></div>
+   <h5 th:text="|${#lists.size(question.answerList)}개의 답변이 있습니다.|"></h5>
+   <div>
+   	<ul>
+   		<li th:each="answer : ${question.answerList}" th:text="${answer.content}"></li>
+   	</ul>
+   </div>
+   
+   <form th:action="@{|/answer/create/${question.id}|}" method="post">
+   	 <textarea name="content" id="content" rows="15"></textarea>
+   	 <input type="submit" value="답변 등록 ">
+   </form>
+   ```
+
+   이와 같이 question_detail.html 파일 상단에 style.css를 사용할 수 있는 링크를 추가하여 스타일시트 파일을 상세 페이지 템플릿에 적용했다.
+
+2. 브라우저에 http://localhost:8080/question/detail/2를 입력해 질문 상세 화면에 스타일이 적용된 것을 볼 수 있다.
+
 ## 부트스트랩으로 화면 꾸미기
+
+
 
 ### 부트스트랩 설치하기
 

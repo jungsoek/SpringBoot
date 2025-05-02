@@ -1,0 +1,10 @@
+package com.mysite.sbb.answer;
+
+public class AnswerController {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

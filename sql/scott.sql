@@ -1,0 +1,18 @@
+DROP TABLE QUESTION;
+DROP TABLE ANSWER;
+
+CREATE TABLE QUESTION(
+    ID              NUMBER(10) PRIMARY KEY,
+    SUBJECT         NVARCHAR2(20),
+    CONTENT         CLOB,
+    CREATE_DATE     DATE
+);
+
+CREATE TABLE ANSWER(
+    ID              NUMBER(10)  PRIMARY KEY,
+    QUESTION_ID     NUMBER(10),
+    CONTENT         CLOB,
+    CREATE_DATE     DATE,
+    CONSTRAINT      fk_question     FOREIGN KEY (question_id) REFERENCES question(id) ON DELETE CASCADE        
+);
+
