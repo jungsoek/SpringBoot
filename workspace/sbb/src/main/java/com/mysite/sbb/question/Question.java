@@ -12,6 +12,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,8 +21,9 @@ import lombok.Setter;
 @Entity
 public class Question {
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer id;
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_seq")
+	@SequenceGenerator(name = "question_seq", sequenceName = "question_seq", allocationSize = 1)
+	private Long id;
 	
 	@Column(length = 200)
 	private String subject;

@@ -61,38 +61,71 @@
 
 ### 컨트롤러 만들기
 
-http://localhost:8080/hello와 같은 브라우저의 요청을 처리하려면 먼저 컨트롤러가 필요하다. 컨트롤러는 서버에 전달된 클라이언트의 요청을 처리하는 자바 클래스이다. 컨트롤러를 한번 만들어본다.
+#### 컨트롤러란?
 
-1. com.mysite.sbb 패키지를 선택 - New - Class 클릭 - Name에 HelloController 입력 - Finish
+Spring MVC 아키텍처에서 **Controller(컨트롤러)**는 다음 역할을 담당한다.
 
-2. 화면에 HelloController.java 파일이 생성된다.
+> 사용자의 HTTP 요청을 받아서, 적절한 비즈니스 로직(서비스)을 호출하고, 처리 결과를 뷰(view)에 전달하는 역할.
+>
+> http://localhost:8080/hello와 같은 브라우저의 요청을 처리하려면 먼저 컨트롤러가 필요하다. 컨트롤러는 서버에 전달된 클라이언트의 요청을 처리하는 자바 클래스이다.
 
-   ```java
-   package com.mysite.sbb;
-   
-   public class HelloController {
-   	
-   }
-   ```
+쉽게 말해 웹 브라우저 요청을 받아서 처리한 뒤, 어떤 HTML을 보여줄지 결정하는 **교통 정리 담당자**이다.
 
-3. 컨트롤러의 기능을 추가한다.
+| 개념            | 설명                                                         |
+| --------------- | ------------------------------------------------------------ |
+| @Controller     | HTTP 요청을 받아 처리하는 클래스임을 나타냄                  |
+| 역할            | 요청 라우팅, 모델 생성, 뷰 반환 담당                         |
+| 동작 원리       | DispatcherServlet → HandlerMapping → Controller → ViewResolver |
+| @ResponseBody   | 반환값을 뷰가 아닌 응답 본문에 직접 전달                     |
+| @RestController | JSON 반환 전용 컨트롤러                                      |
+| MVC 흐름        | Model - View - Controller 각 책임이 분리됨                   |
 
-   ```java
-   package com.mysite.sbb;
-   
-   import org.springframework.stereotype.Controller;
-   import org.springframework.web.bind.annotation.GetMapping;
-   import org.springframework.web.bind.annotation.ResponseBody;
-   
-   @Controller
-   public class HelloController {
-   	@GetMapping("/hello")
-   	@ResponseBody
-   	public String hello() {
-   		return "Hello World";
-   	}
-   }
-   ```
+#### Spring MVC 흐름 요약
+
+```
+[요청] GET /users/1?verbose=true
+   ↓
+DispatcherServlet (모든 HTTP 요청이 처음으로 통과하는 중앙 서블릿)
+   ↓
+HandlerMapping → 어떤 Controller가 요청을 처리할지 찾아줌
+   ↓
+HandlerAdapter → 매핑된 메서드 실행
+   ↓
+@PathVariable / @RequestParam / @RequestBody 등으로 데이터 추출
+   ↓
+Model에 데이터 담음
+   ↓
+return "viewName"
+   ↓
+ViewResolver → viewName → HTML 어떤 템플릿(.html, .jsp 등)을 렌더링할지 결정함
+   ↓
+[응답] HTML 페이지 or JSON 응답
+```
+
+#### `@Controller` 어노테이션 설명
+
+```java
+package com.mysite.sbb;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+@Controller
+public class HelloController {
+	@GetMapping("/hello")
+	@ResponseBody
+	public String hello() {
+		return "Hello World";
+	}
+}
+```
+
+**※ 역할**
+
+* 이 클래스를 Spring이 자동으로 **Bean으로 등록**하게 함
+* **HTTP 요청을 처리하는 웹 컴포넌트**로 인식됨
+* 내부적으로 `@Component`의 특수화된 버전이다. → 즉, **Component Scan**에 의해 등록됨
 
 클래스명 위에 적용된 @Controller 어노테이션은 HelloController 클래스가 컨트롤러의 기능을 수행한다는 의미이다. 이 어노테이션이 있어야 스프링 부터 프레임워크가 컨트롤러로 인식한다.
 
@@ -100,9 +133,169 @@ hello 메서드에 적용된 @GetMapping("/hello") 어노테이션은 http://loc
 
 또한 Get 방식의 URL 요청을 위해 GetMapping을 사용하고 Post 방식의 URL 요청을 위해서는 PostMapping을 사용한다. 그리고 @ResponseBody 어노테이션은 hello 메서드의 출력 결과가 문자열 그 자체임을 나타낸다. hello 메서드는 'Hello World' 문자열을 리턴하므로 결과로 'Hello World' 문자열이 출력된다.
 
-cf) : Get 방식과 Post 방식
+**cf) : Get 방식과 Post 방식**
 
 Get과 Post는 HTTP 프로토콜을 사용하여 데이터를 서버로 전송하는 주요 방식이다. 먼저, Get 방식은 데이터를 URL에 노출시켜 요청하며, 주로 서버에서 데이터를 조회하거나 읽기 위한 목적으로 사용한다. 반면, Post 방식은 데이터를 숨겨서 요청하므로 로그인 정보와 같은 민감한 데이터를 서버에 제출하거나 저장하는 목적으로 사용한다.
+
+#### @`Controller` 어노테이션의 정의
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Component  // 결국 Component다!
+public @interface Controller {
+}
+```
+
+**@Target(ElementType.TYPE)**
+
+* 이 어노테이션은 **클래스, 인터페이스, 열거형 등 타입 선언부에만 사용할 수 있음**을 의미.
+
+* `TYPE`은 클래스 레벨을 의미.
+* → 즉, 메서드나 필드에는 사용할 수 없다. 오직 클래스 위에만.
+
+**@Retention(RetentionPolicy.RUNTIME)**
+
+* 이 어노테이션이 **런타임에도 살아있게 유지**된다는 뜻.
+
+* 자바의 어노테이션은 보존 레벨에 따라 처리 방식이 달라진다.
+
+  | Retention | 설명                                                  |
+  | --------- | ----------------------------------------------------- |
+  | SOURCE    | 컴파일러에서만 사용. class 파일에 없음                |
+  | CLASS     | 컴파일된 class 파일에는 있으나, JVM은 무시            |
+  | RUNTIME   | JVM이 런타임에서도 읽을 수 있음 (스프링은 이걸 쓴다.) |
+
+​	그래서 Spring이 런타임에 리플렉션으로 `@Controller`를 감지할 수 있는 거야.
+
+**@Documented**
+
+* 자바 문서(javadoc)를 생성할 때 이 어노테이션도 문서에 포함되게 해 줌.
+
+* 실무에선 눈에 잘 안 띄지만, 공식 문서에 자동 포함되도록 해줌.
+
+**@Component**
+
+* **스프링이 `@Controller`를 빈으로 등록하는 이유**는 `@Controller`가 결국 `@Component`를 포함하고 있기 때문이야.
+* 즉, `@Controller`는 사실상 `@Component`의 특수한 버전일 뿐이야.
+* Spring의 Component Scan은 `@Component`, `@Service`, `@Repository`, `@Controller` 전부를 찾음.
+
+**※ 핵심 포인트**
+
+* `@Component`를 포함하므로 Spring이 자동으로 메모리에 올림
+* `DispatcherServlet`이 `@Controller`로 등록된 클래스만 HTTP 요청 핸들러로 인식
+
+#### 어떻게 요청을 처리하나?
+
+컨트롤러 메서드는 다음 어노테이션으로 요청을 처리한다.
+
+**요청 매핑 관련 어노테이션**
+
+| 어노테이션        | 설명                          | 예제                                                        | 비고                                 |
+| ----------------- | ----------------------------- | ----------------------------------------------------------- | ------------------------------------ |
+| `@RequestMapping` | URL + HTTP 메서드를 함께 매핑 | `@RequestMapping(value="/users", method=RequestMethod.GET)` | 모든 메서드(GET, POST 등) 다 지원    |
+| `@GetMapping`     | GET 요청 전용 매핑            | `@GetMapping("/users")`                                     | `@RequestMapping(method=GET)`의 축약 |
+| `@PostMapping`    | POST 요청 전용 매핑           | `@PostMapping("/users")`                                    | 폼 제출, JSON 등록 등                |
+| `@PutMapping`     | PUT 요청 처리                 | `@PutMapping("/users/{id}")`                                | 리소스 전체 수정                     |
+| `@DeleteMapping`  | DELETE 요청 처리              | `@DeleteMapping("/users/{id}")`                             | 리소스 삭제                          |
+
+**요청 데이터 추출 관련 어노테이션**
+
+| 어노테이션        | 설명                                  | 예제                                                    | 주의사항                                                     |
+| ----------------- | ------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| `@PathVariable`   | URL 경로에 포함된 변수 추출           | `/users/{id}` → `@PathVariable Long id`                 | 경로 변수 이름과 파라미터 이름이 일치해야 함                 |
+| `@RequestParam`   | URL 쿼리 파라미터 추출                | `/search?keyword=test` → `@RequestParam String keyword` | 기본값 설정 가능: `@RequestParam(defaultValue="1") int page` |
+| `@RequestBody`    | 요청 본문(body) JSON → Java 객체 매핑 | `{ "title": "Hello" }` → `@RequestBody PostDto dto`     | 주로 REST API에서 사용                                       |
+| `@RequestHeader`  | HTTP Header 값 추출                   | `@RequestHeader("User-Agent") String userAgent`         | 인증 헤더, 커스텀 헤더 읽을 때 유용                          |
+| `@ModelAttribute` | 폼 데이터를 Java 객체로 매핑          | `@ModelAttribute UserForm form`                         | GET/POST 폼에서 주로 사용됨                                  |
+
+**응답 처리 관련 어노테이션**
+
+| 어노테이션        | 설명                            | 예제                                            | 특징                    |
+| ----------------- | ------------------------------- | ----------------------------------------------- | ----------------------- |
+| `@ResponseBody`   | 반환 값을 HTTP body에 직접 작성 | `@ResponseBody String hello()` → `hello`        | REST API에서 필수       |
+| `@ResponseStatus` | HTTP 상태 코드 설정             | `@ResponseStatus(HttpStatus.CREATED)`           | 성공, 실패 코드 지정    |
+| `@RestController` | `@Controller + @ResponseBody`   | `@RestController public class ApiController {}` | JSON 반환 전용 컨트롤러 |
+
+**예외 처리 관련 어노테이션**
+
+| 어노테이션              | 설명                       | 예제                                                         | 특징                                           |
+| ----------------------- | -------------------------- | ------------------------------------------------------------ | ---------------------------------------------- |
+| `@ExceptionHandler`     | 컨트롤러 내부 예외 처리    | `@ExceptionHandler(IllegalArgumentException.class)`          | 특정 예외에 대한 핸들링 메서드 지정            |
+| `@RestControllerAdvice` | 전역 예외 처리             | `@RestControllerAdvice public class GlobalExceptionHandler {}` | 모든 컨트롤러에 적용 가능, JSON 형태 응답 가능 |
+| `@ControllerAdvice`     | 전역 예외 처리 (HTML 뷰용) | `@ControllerAdvice public class ViewExceptionHandler {}`     | 뷰 기반 애플리케이션에 사용                    |
+
+**컨트롤러 보조 구성요소**
+
+| 구성요소          | 설명                            | 사용 예제                                       | 비고                                     |
+| ----------------- | ------------------------------- | ----------------------------------------------- | ---------------------------------------- |
+| `Model`           | 뷰에 데이터를 전달하는 객체     | `model.addAttribute("list", data)`              | HTML 뷰로 데이터 전달 시 사용            |
+| `ViewResolver`    | 뷰 이름을 실제 파일로 연결      | `"index"` → `templates/index.html`              | prefix/suffix로 HTML 경로 조합           |
+| `@Controller`     | HTML 뷰를 반환하는 컨트롤러     | `@Controller public class MyController {}`      | 내부적으로 `@Component` 포함             |
+| `@RestController` | JSON 등을 반환하는 API 컨트롤러 | `@RestController public class ApiController {}` | 내부적으로 `@Controller + @ResponseBody` |
+
+
+
+
+
+#### `@Controller` vs `@RestController`
+
+| 어노테이션        | 설명                                            |
+| ----------------- | ----------------------------------------------- |
+| `@Controller`     | **뷰(View)**를 반환함 (HTML 렌더링)             |
+| `@RestController` | **데이터(JSON)**를 반환함 (API 용도)            |
+| 구성 차이         | `@RestController = @Controller + @ResponseBody` |
+
+```java
+// 일반 컨트롤러
+@Controller
+public class ViewController {
+   @GetMapping("/")
+   public String index() {
+      return "index";  // 뷰 이름 반환 (index.html)
+   }
+}
+
+// REST API 컨트롤러
+@RestController
+public class ApiController {
+   @GetMapping("/api")
+   public String hello() {
+      return "hello";  // "hello" 라는 문자열을 그대로 응답
+   }
+}
+```
+
+#### `@Controller` 내부 동작 (깊은 레벨)
+
+1. Spring 부트 시작 시, `@ComponentScan`에 의해 `@Controller` 클래스가 탐색됨.
+2. `DispatcherServlet`이 HTTP 요청을 받음.
+3. `HandlerMapping`이 URL과 일치하는 `@Controller`의 메서드를 찾음.
+4. 찾은 메서드를 실행하고, `Model` 객체에 데이터를 담아 전달.
+5. 반환한 문자열은 **뷰 이름**으로 처리되어 `ViewResolver`가 HTML을 렌더링.
+6. 응답이 사용자에게 전달됨.
+
+#### Controller의 정석 구성 예시
+
+```java
+@Controller
+@RequiredArgsConstructor
+@RequestMapping("/question")
+public class QuestionController {
+
+	private final QuestionService questionService;
+
+	@GetMapping("/list")
+	public String list(Model model) {
+		List<Question> questions = questionService.getList();
+		model.addAttribute("questionList", questions);
+		return "question_list"; // templates/question_list.html 렌더링
+	}
+}
+```
+
+
 
 ### 로컬 서버 실행
 
@@ -398,7 +591,7 @@ cf) : 빌드 도구의 쓰임
 
    MainController 클래스에 @Controller 어노테이션을 적용하면 MainController 클래스는 스프링 부트의 컨트롤러가 된다. 그리고 index 메서드의 @GetMapping 어노테이션은 요청된 URL(/sbb)과의 매핑을 담당한다. 브라우저가 URL을 요청하면 스프링 부트는 요청 페이지와 매핑되는 메서드를 찾아 실행한다.
 
-   정리하자면, 스프링 부트는 웹 브라우저로부터 http://localhost:8080/sbb 요청이 발생하면 /sbb URL과 매핑되는 index 메서드릴 MainController 클래스에서 찾아 실행한다.
+   정리하자면, 스프링 부트는 웹 브라우저로부터 http://localhost:8080/sbb 요청이 발생하면 /sbb URL과 매핑되는 index 메서드를MainController 클래스에서 찾아 실행한다.
 
 2. 다시 http://localhost:8080/sbb URL을 호출해 본다.
 
@@ -527,13 +720,13 @@ JPA를 사용해 데이터를 관리하기 위해 먼저 DB를 설치한다.
 
 2. 설치한 DB를 사용하려면 src/main/resources 디렉터리의 application.properties 파일에 새로운 설정을 추가해야 한다. 다음과 같이 application.properties 파일을 작성한다.
 
-   ```
+   ```properties
    ...
    
    #DATABASE
-   spring.datasource.url=jdbc:oracle:thin:@localhost:1521/orcl
-   spring.datasource.username=C##SCOTT
-   spring.datasource.password=0000
+   spring.datasource.url=jdbc:oracle:thin:@localhost:1521/XEPDB1
+   spring.datasource.username=sbb
+   spring.datasource.password=1234
    spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
    
    ...
@@ -630,10 +823,16 @@ DB를 사용할 준비가 끝났다. 이제 자바 프로그램에서 DB를 사�
 
 2. JPA 설정을 위해 이번에는 application.properties 파일을 다음과 같이 수정한다.
 
-   ```
+   ```properties
+   ...
+   
    #JPA
    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
-   spring.jpa.hibernate.ddl-auto=update
+   spring.jpa.hibernate.ddl-auto=none
+   spring.jpa.properties.hibernate.format_sql=true
+   spring.jpa.properties.hibernate.show_sql=true
+   
+   ...
    ```
 
    추가한 설정 항목을 살펴본다.
@@ -643,9 +842,9 @@ DB를 사용할 준비가 끝났다. 이제 자바 프로그램에서 DB를 사�
      스프링 부트와 하이버네이트를 함께 사용할 때 필요한 설정 항목이다. 표준 SQL이 아닌 하이버네이트만의 SQL을 사용할 때 필요한 항목으로 하이버네이트의 org.hibernate.dialect.Oracle21cDialect 클래스를 설정했다.
 
    * spring.jpa.hibernate.ddl-auto
-
+   
      엔티티를 기준으로 데이터의 테이블을 생성하는 규칙을 설정한다.
-
+   
    cf) : spring.jpa.hibernate.ddl-auto의 규칙을 더 알아본다.
 
    * none : 엔티티가 변경되더라도 데이터베이스를 변경하지 않는다.
@@ -653,7 +852,7 @@ DB를 사용할 준비가 끝났다. 이제 자바 프로그램에서 DB를 사�
    * validate : 엔티티와 테이블 간에 차이점이 있는지 검사만 한다.
    * create : 스프링 부트 서버를 시작할 때 테이블을 모두 삭제한 후 다시 생성한다.
    * create-drop : create와 동일하지만 스프링 부트 서버를 종료할 때에도 테이블을 모두 삭제한다.
-
+   
    개발 환경에서는 보통 update 모드를 사용하고, 운영 환경에서는 none 또는 validate를 주로 사용한다.
 
 ## 엔티티로 테이블 매핑하기
@@ -688,20 +887,27 @@ SBB에 사용할 엔티티를 만들어 보며 개념을 이해한다. 엔티티
 
 이렇게 생각한 속성을 바탕으로 질문과 답변에 해당되는 엔티티를 작성한다.
 
-### 질문 엔티티 만들기
+### Question Entity
 
-다음과 같이 질문 엔티티를 만든다. 먼저 src/main/java 디렉터리의 com.mysite.sbb 패키지에 Question.java 파일을 작성해 Question 클래스를 만든다.
+이 `Question` 클래스는 질문-답변 게시판 시스템에서 “**질문 하나**”를 표현하는 도메인 모델이며,
+ **Oracle 데이터베이스의 QUESTION 테이블과 매핑**되도록 JPA 어노테이션으로 정의된 클래스이다.
+
+*Question.java*
 
 ```java
 package com.mysite.sbb;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.SequenceGenerator;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -710,7 +916,8 @@ import lombok.Setter;
 @Entity
 public class Question {
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_seq")
+	@SequenceGenerator(name = "question_seq", sequenceName = "question_seq", allocationSize = 1)
 	private Integer id;
 	
 	@Column(length = 200)
@@ -720,198 +927,618 @@ public class Question {
 	private String content;
 	
 	private LocalDateTime createDate;
+	
+	@OneToMany(mappedBy = "question", cascade = CascadeType.REMOVE)
+	private List<Answer> answerList;
 }
 ```
 
-엔티티로 만들기 위해 Question 클래스에 @Entity 어노테이션을 적용했다. 이와 같이 @Entity 어노테이션을 적용해야 스프링 부트가 Question 클래스를 엔티티로 인식한다.
+#### 전체 구조 정리
 
-그리고 엔티티의 속성으로 고유 번호(id), 제목(subject), 내용(content), 작성 일시(createDate)를 작성했다. 각 속성에는 Id, GeneratedValue, Column과 같은 어노테이션이 적용되어 있는데 하나씩 살펴본다.
+| 필드명       | DB 컬럼 타입       | 설명                    | 어노테이션 요약                                |
+| ------------ | ------------------ | ----------------------- | ---------------------------------------------- |
+| `id`         | NUMBER (시퀀스)    | 질문 ID (PK, 자동 생성) | `@Id`, `@GeneratedValue`, `@SequenceGenerator` |
+| `subject`    | VARCHAR2(200)      | 질문 제목               | `@Column(length=200)`                          |
+| `content`    | CLOB               | 질문 본문 내용          | `@Lob`, `@Column`                              |
+| `createDate` | TIMESTAMP          | 생성일시                | 자동 매핑                                      |
+| `answerList` | 외래키 참조 컬렉션 | 여러 개의 답변 리스트   | `@OneToMany(mappedBy=..., cascade=...)`        |
 
-#### @Id 어노테이션
+#### 패키지 선언부
 
-id 속성에 적용한 @Id 어노테이션은 id 속성을 기본키로 지정한다. id 속성을 기본키로 지정한 이유는 id 속성의 고유 번호들은 엔티티에서 각 데이터들을 구분하는 유효한 값으로, 중복되면 안 되기 때문이다.
+```java
+package com.mysite.sbb;
+```
 
-#### @GeneratedValue 어노테이션
+* 이 클래스는 `com.mysite.sbb`라는 패키지에 소속돼 있음.
 
-@GeneratedValue 어노테이션을 적용하면 데이터를 저장할 때 해당 속성에 값을 일일이 입력하지 않아도 자동으로 1씩 증가하여 저장된다. strategy = GenerationType.IDENTITY는 고유한 번호를 생성하는 방법을 지정하는 부분으로, GenerationType.IDENTITY는 해당 속성만 별도로 번호가 차례대로 늘어나도록 할 때 사용한다.
+* Spring Boot에서는 패키지 구성이 매우 중요함. 기본적으로 `@SpringBootApplication`이 선언된 클래스보다 **하위 패키지에 있어야 컴포넌트 스캔에 포함**됨.
 
-※ strategy 옵션을 생략한다면 @GeneratedValue 어노테이션이 지정된 모든 속성에 번호를 차례로 생성하므로 순서가 일정한 고유 번호를 가질 수 없게 된다. 이러한 이유로 보통 strategy = GenerationType.IDENTITY를 많이 사용한다.
+####  import 문
 
-#### @Column 어노테이션
+```java
+import java.time.LocalDateTime;
+```
 
-엔티티의 속성은 테이블의 열 이름과 일치하는데 열의 세부 설정을 위해 @Column 어노테이션을 사용한다. length는 열의 길이를 설정할 때 사용하고(여기서는 열의 길이를 200으로 정했다), columnDefinition은 열 데이터의 유형이나 성격을 정의할 때 사용한다. 여기서 columnDefinition = "TEXT"는 말 그대로 '텍스트'를 열 데이터로 넣을 수 있음을 의미하고, 글자 수를 제한할 수 없는 경우에 사용한다.
+* 자바 8부터 도입된 `java.time` 패키지의 날짜/시간 클래스.
+* `LocalDateTime`은 날짜 + 시간 정보만 가짐 (타임존 없음).
 
-※ 엔티티의 속성은 @Column 어노테이션을 사용하지 않더라도 테이블의 열로 인식한다. 테이블의 열로 인식하고 싶지 않다면 @Transient 어노테이션을 사용한다. @Transient 어노테이션은 엔티티의 속성을 테이블의 열로 만들지 않고 클래스의 속성 기능으로만 사용하고자 할 때 쓴다.
+```java
+import java.util.List;
+```
 
-cf) : 엔티티의 속성 이름과 테이블의 열 이름의 차이
+* 답변들을 리스트로 저장하기 위해 사용된 컬렉션 인터페이스.
 
-Question 엔티티에서 작성 일시에 해당하는 createDate 속성의 이름은 DB 테이블에서는 create_date라는 열 이름으로 설정된다. 즉, createDate 처럼 카멜케이스 형식의 이름은 create_date처럼 모두 소문자로 변경되고 단어가 언더바로 구분되어 DB 테이블의 열 이름이 된다.
+* JPA에서 1:N 관계 매핑 시 자주 사용됨.
 
-cf) : 엔티티를 만들 때 Setter 메서드는 사용하지 않는다.
+```java
+import jakarta.persistence.*; // 여러 개 생략
+```
 
-일반적으로 엔티티를 만들 때에는 Setter 메서드를 사용하는것을 지양한다. 왜냐하면 엔티티는 DB와 바로 연결되므로 데이터를 자유롭게 변경할 수 있는 Setter 메서드를 허용하는 것이 안전하지 않다고 판단하기 때문이다. 그렇다면 Setter 메서드 없이 어떻게 엔티티에 값을 저장할 수 있을까?
+* `jakarta.persistence`는 JPA 어노테이션을 제공하는 공식 패키지임.
+* (예전에는 `javax.persistence`였지만 Jakarta EE로 넘어오면서 패키지 이름이 바뀜.)
 
-엔티티는 생성자에 의해서만 엔티티의 값을 저장할 수 있게 하고, 데이터를 변경해야 할 경우에는 메서드를 추가로 작성하면 된다. 
+```java
+import lombok.Getter;
+import lombok.Setter;
+```
 
-### 답변 엔티티 만들기
+* 롬복 라이브러리 어노테이션.
+* 해당 클래스의 모든 필드에 대해 **getter, setter 메서드 자동 생성**.
 
-1. 답변 엔티티를 만든다. 먼저 src/main/java 디렉터리의 com.mysite.sbb 패키지에 Answer.java 파일을 작성해 Answer 클래스를 만든다.
+#### 클래스 선언부
 
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   
-   import jakarta.persistence.Column;
-   import jakarta.persistence.Entity;
-   import jakarta.persistence.GeneratedValue;
-   import jakarta.persistence.GenerationType;
-   import jakarta.persistence.Id;
-   import lombok.Getter;
-   import lombok.Setter;
-   
-   @Getter
-   @Setter
-   @Entity
-   public class Answer {
-   	@Id
-   	@GeneratedValue(strategy = GenerationType.IDENTITY)
-   	private Integer id;
-   	
-   	@Column(columnDefinition = "TEXT")
-   	private String content;
-   	
-   	private LocalDateTime createDate;
-   	
-   	private Question question;
-   }
-   ```
+```java
+@Getter
+@Setter
+@Entity
+public class Question {
+```
 
-   질문 엔티티와 달리 답변 엔티티에서는 질문 엔티티를 참조하기 위해 question 속성을 추가했다.
+* `@Getter` : `getId()`, `getSubject()` 등 메서드 자동 생성.
+* `@Setter` : `setSubject(String subject)` 등 자동 생성.
+* `@Entity` : 이 클래스는 JPA 엔티티이며, DB 테이블과 매핑됨.
+  - 즉, 이 클래스는 **DB의 테이블 1개**를 의미함.
+  - 기본적으로 클래스 이름을 소문자화한 `question`이라는 테이블로 매핑됨. (`@Table`로 바꿀 수 있음.)
 
-2. 답변을 통해 질문의 제목을 알고 싶다면 answer.getQuestion().getSubject()를 사용해 접근할 수 있다. 하지만 이렇게 question 속성만 추가하면 안 되고 질문 엔티티와 연결된 속성이라는 것을 답변 엔티티에 표시해야 한다. 즉, 다음과 같이 Answer 엔티티의 question 속성에 @ManyToOne 어노테이션을 추가해 질문 엔티티와 연결한다.
+#### id 필드
 
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   
-   import org.springframework.data.annotation.CreatedDate;
-   
-   import jakarta.persistence.Column;
-   import jakarta.persistence.Entity;
-   import jakarta.persistence.GeneratedValue;
-   import jakarta.persistence.GenerationType;
-   import jakarta.persistence.Id;
-   import jakarta.persistence.ManyToOne;
-   import lombok.Getter;
-   import lombok.Setter;
-   
-   @Getter
-   @Setter
-   @Entity
-   public class Answer {
-   	@Id
-   	@GeneratedValue(strategy = GenerationType.IDENTITY)
-   	private Integer id;
-   	
-   	@Column(columnDefinition = "TEXT")
-   	private String content;
-   	
-   	@CreatedDate
-   	private LocalDateTime createDate;
-   	
-   	@ManyToOne
-   	private Question question;
-   }
-   ```
+```java
+@Id
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_seq")
+@SequenceGenerator(name = "question_seq", sequenceName = "question_seq", allocationSize = 1)
+private Integer id;
+```
 
-   게시판 서비스에서는 하나의 질문에 답변은 여러 개가 달릴 수 있다. 따라서 답변은 Many(많은 것)가 되고 질문은 One(하나)이 된다. 즉, @ManyToOne 어노테이션을 사용하면 N:1 관계를 나타낼 수 있다. 이렇게 @ManyToOne 어노테이션을 설정하면 Answer(답변) 엔티티의 question 속성과 Question(질문) 엔티티가 서로 연결된다(실제 DB에서는 외래키 관계가 생성된다).
+* `@Id`: 이 필드가 기본키.
 
-   ※ @ManyToOne은 부모 자식 관계를 갖는 구조에서 사용한다. 여기서 부모는 Question, 자식은 Answer라고 할 수 있다.
+* `@GeneratedValue(...SEQUENCE...)` :
 
-   ※ 외래키란 테이블과 테이블 사이의 관계를 구성할 때 연결되는 열을 의미한다.
+  - 오라클에서는 보통 **시퀀스를 통해 PK를 생성**하며, `IDENTITY` 전략은 권장되지 않음 (지원이 불완전하거나 성능 저하).
+  - 생성값과 타입을 정함
+  - `strategy = GenerationType.SEQUENCE` →
+     Oracle에서는 **시퀀스를 통해 자동 생성**하겠다는 뜻이야.
+  - `generator = "question_seq"` →
+     **어떤 시퀀스 설정을 쓸지 지정** (→ 아래의 `@SequenceGenerator` 참조)
 
-3. 그렇다면 반대로 질문에서 답변을 참조할 수는 없는가? 물론 가능하다. 답변과 질문이 N:1 관계라면 답변은 1:N 관계라고 할 수 있다. 이런 경우에는 @ManyToOne이 아닌 @OneToMany 어노테이션을 사용한다. 질문 하나에 답변은 여러 개이므로 Question 엔티티에 추가할 Answer 속성은 List 형태로 구성해야 한다. 이를 구현하기 위해 Question 엔티티를 다음과 같이 수정한다.
+* `@SequenceGenerator` :
 
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   
-   import jakarta.persistence.CascadeType;
-   import jakarta.persistence.Column;
-   import jakarta.persistence.Entity;
-   import jakarta.persistence.GeneratedValue;
-   import jakarta.persistence.GenerationType;
-   import jakarta.persistence.Id;
-   import jakarta.persistence.OneToMany;
-   import lombok.Getter;
-   import lombok.Setter;
-   
-   @Getter
-   @Setter
-   @Entity
-   public class Question {
-   	@Id
-   	@GeneratedValue(strategy = GenerationType.IDENTITY)
-   	private Integer id;
-   	
-   	@Column(length = 200)
-   	private String subject;
-   	
-   	@Column(columnDefinition = "TEXT")
-   	private String content;
-   	
-   	private LocalDateTime createDate;
-   	
-   	@OneToMany(mappedBy = "question", cascade = CascadeType.REMOVE)
-   	private List<Answer> answerList;
-   }
-   ```
-   
-   Answer 객체들로 구성된 answerList를 Question 엔티티의 속성으로 추가하고 @OneToMany 어노테이션을 설정했다. 질문에서 답변을 참조하려면 question.getAnswerList()를 호출한다. @OneToMany 어노테이션에 사용된 mappedBy는 참조 엔티티의 속성명을 정의한다. 즉, Answer 엔티티에서 Question 엔티티를 참조한 속성인 question을 mappedBy에 전달해야 한다.
-   
-   cf) : CascadeType.REMOVE란?
-   
-   게시판 서비스에서 질문 하나에 답변이 여러 개 작성될 수 있다. 그런데 보통 게시판 서비스에서는 질문을 삭제하면 그에 달린 답변들도 함께 삭제된다. SBB도 질문을 삭제하면 그에 달린 답변들도 모두 삭제되도록 cascade = CascadeType.REMOVE를 사용했다. 이와 관련해 보다 자세한 내용을 알고 싶다면 https://www.baeldung.com/jpa-cascade-types를 참고한다.
+  ```JAVA
+  @SequenceGenerator(
+      name = "question_seq",               // JPA 내부에서 쓸 이름 (별칭)
+      sequenceName = "QUESTION_SEQ",       // 실제 Oracle DB의 시퀀스 이름
+      allocationSize = 1                   // JPA가 몇 개씩 미리 당겨쓸 건지
+  )
+  ```
+
+  - 실제 DB에 존재하는 시퀀스와 연결.
+  - 여기선 `question_seq`라는 이름의 시퀀스를 사용하고 있음.
+  - 이 어노테이션은 **시퀀스를 직접 만들지 않음**.
+  - 단지 JPA가 **"어떤 시퀀스를 어떻게 사용할지" 설정**하는 선언임.
+  - `name` = JPA 내부에서 사용할 이름 (JPA가 이걸로 참조함)
+  - `sequenceName` = 실제 Oracle DB에 존재하는 시퀀스 이름
+  - `allocationSize` = JPA는 성능을 위해 **시퀀스를 매번 호출하지 않고**, **미리 여러 개의 ID 값을 확보(할당)** 해놓고 그걸 메모리에서 사용함.
+    - 이때 `allocationSize = N`이면:
+      - JPA는 시퀀스를 한 번 호출해서 **ID 값 N개를 예약**함.
+      - 그리고 DB를 다시 접근하지 않고, **그 N개의 값을 차례대로 사용**함.
+      - N개를 다 쓰면, 다음 번에 또 시퀀스를 호출해서 N개를 다시 확보함.
+
+**오라클 SQL**
+
+```SQL
+CREATE SEQUENCE question_seq START WITH 1 INCREMENT BY 1;
+```
+
+#### subject 필드
+
+```java
+@Column(length = 200)
+private String subject;
+```
+
+* `@Column(length = 200)` :
+
+  - 해당 필드가 DB 테이블에서 `VARCHAR(200)`으로 생성됨.
+
+  - 지정하지 않으면 기본값은 255자.
+
+* 질문의 제목을 저장하는 필드.
+
+#### content 필드
+
+```java
+@Column(columnDefinition = "CLOB")
+private String content;
+```
+
+* 원래는 `@Column(columnDefinition = "TEXT")`처럼 썼을 텐데, **Oracle은 TEXT 타입이 없음!**
+* 오라클에서 긴 텍스트는 **`CLOB`**로 저장해야 함.
+* `@Lob` + `@Column` → JPA가 content 필드를 `CLOB` 타입으로 자동 매핑.
+
+#### createDate 필드
+
+```java
+private LocalDateTime createDate;
+```
+
+* `LocalDateTime`은 JPA가 오라클에서 `TIMESTAMP` 타입으로 자동 매핑.
+* 타임존 정보는 포함되지 않음.
+* 오라클에서는 내부적으로 `TIMESTAMP(6)` 정도로 매핑됨.
+
+#### answerList 필드
+
+```java
+@OneToMany(mappedBy = "question", cascade = CascadeType.REMOVE)
+private List<Answer> answerList;
+```
+
+**관계 매핑 설명**
+
+* `@OneToMany` : 하나의 질문은 여러 개의 답변을 가짐 → **1:N 관계**.
+
+* `mappedBy = "question"` :
+
+  - 이 필드는 **주 테이블이 아님.**
+  - 실제 외래키는 `Answer` 테이블의 `question` 필드가 가지고 있음.
+
+* `cascade = CascadeType.REMOVE` :
+
+  - 질문이 삭제되면 연결된 답변들도 모두 자동 삭제됨.
+
+  - 즉, **삭제 연쇄(연관 엔티티 자동 삭제)** 설정.
+
+#### ※ 부가 설명
+
+* `@Lob`은 텍스트 뿐 아니라 이미지(Blob)에도 사용됨.
+
+  * **LOB**는 큰 데이터를 저장하기 위한 **상위 개념**.
+
+  * 텍스트든, 이미지든, PDF든, **큰 데이터를 테이블 컬럼에 저장할 때** 쓰는 특수 타입.
+
+  * Oracle에서는 LOB이 총 4종류로 나뉜다:
+
+    | LOB 타입 | 의미                    | 저장 데이터                            |
+    | -------- | ----------------------- | -------------------------------------- |
+    | `BLOB`   | Binary Large Object     | 바이너리 데이터 (이미지, 영상, PDF 등) |
+    | `CLOB`   | Character Large Object  | 일반 텍스트 (유니코드 X)               |
+    | `NCLOB`  | National Character LOB  | 유니코드 텍스트 (`NVARCHAR` 기반)      |
+    | `BFILE`  | Binary File (read-only) | DB 외부 파일 (파일 시스템 링크)        |
+
+    | 타입    | 내용                    | 인코딩      | 최대 크기 | 사용 예시                        |
+    | ------- | ----------------------- | ----------- | --------- | -------------------------------- |
+    | `BLOB`  | 바이너리 데이터 저장    | 없음        | 4GB 이상  | 이미지, PDF, 영상 등             |
+    | `CLOB`  | 대용량 텍스트           | 기본 문자셋 | 4GB 이상  | 게시글 본문, 문서 내용           |
+    | `NCLOB` | 유니코드 대용량 텍스트  | UTF-16      | 4GB 이상  | 다국어 문서, 이모지 포함 글      |
+    | `BFILE` | 외부 바이너리 파일 링크 | 없음        | OS 제한   | 대용량 영상/음원, 백업 파일 참조 |
+
+  * 오라클에서 엔티티 이름과 컬럼 이름을 쌍따옴표 `" "`로 지정하면 대소문자 구분하니 주의.
+
+* `allocationSize = 1`은 시퀀스 값 증가 간격을 JPA와 맞추기 위해 필요 (기본은 50인데, mismatch 발생 가능성 있음).
+
+### Answer Entity
+
+이 `Answer` 클래스는 질문-답변 게시판 시스템에서 “**답변 하나**”를 표현하는 도메인 모델이며,
+ **Oracle 데이터베이스의 ANSWER 테이블과 매핑**되도록 JPA 어노테이션으로 정의된 클래스이다.
+
+| 항목                                   | 설명                                  |
+| -------------------------------------- | ------------------------------------- |
+| `@Entity`                              | 이 클래스는 DB 테이블로 매핑됨        |
+| `@Id`                                  | 기본키 식별자                         |
+| `@GeneratedValue + @SequenceGenerator` | 오라클용 자동 증가 시퀀스 설정        |
+| `@Column(columnDefinition = "CLOB")`   | 긴 텍스트 저장                        |
+| `@ManyToOne`                           | 하나의 질문에 여러 개의 답변이 연결됨 |
+| `@JoinColumn`                          | 외래 키 직접 지정                     |
+| `LocalDateTime` → TIMESTAMP            | 날짜 및 시간 저장 가능                |
+
+```java
+package com.mysite.sbb;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Entity
+public class Answer {
+	@Id
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "answer_seq_gen")
+	@SequenceGenerator(name = "answer_seq_gen", sequenceName = "answer_seq", allocationSize = 1)
+	private Integer id;
+	
+	@Column(name = "content", columnDefinition = "CLOB", nullable = false)
+	private String content;
+	
+	@Column(name = "createDate", nullable = false)
+	private LocalDateTime createDate;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "question_id", nullable = false)
+	private Question question;
+}
+
+```
+
+#### 패키지 및 import
+
+```java
+package com.mysite.sbb;
+```
+
+* `Answer` 클래스가 속한 패키지.
+* 보통 도메인 단위 또는 기능별로 나누어 구조화함.
+
+```java
+import java.time.LocalDateTime;
+```
+
+* Java 8 이상의 `날짜 및 시간` API.
+* DB의 `TIMESTAMP`와 1:1로 매핑 가능.
+
+#### JPA 어노테이션 & Lombok
+
+```java
+@Getter
+@Setter
+```
+
+* 롬복(Lombok) 어노테이션.
+* 각각 `getX()`, `setX()` 메서드를 자동 생성해줌.
+* 코드가 간결해짐.
+
+```java
+@Entity
+```
+
+* 이 클래스가 **JPA 관리 대상 엔티티**라는 선언.
+* 즉, 이 클래스는 **DB의 테이블과 매핑**됨.
+* 기본적으로 클래스명 `Answer` → 테이블명 `"ANSWER"`로 매핑됨 (Oracle은 대문자 자동 변환).
+* 테이블명을 명시하고 싶으면 `@Table(name = "answer")` 같이 추가 가능.
+
+#### ID 필드
+
+```java
+@Id
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "answer_seq_gen")
+@SequenceGenerator(name = "answer_seq_gen", sequenceName = "answer_seq", allocationSize = 1)
+private Integer id;
+```
+
+| 요소                                 | 설명                                                  |
+| ------------------------------------ | ----------------------------------------------------- |
+| `@Id`                                | 이 필드가 **기본키**임을 나타냄                       |
+| `@GeneratedValue(...)`               | 기본키 값이 자동 생성됨을 지정                        |
+| `strategy = GenerationType.SEQUENCE` | Oracle에서는 `IDENTITY` 대신 `SEQUENCE`를 사용해야 함 |
+| `generator = "answer_seq_gen"`       | 아래 `@SequenceGenerator`에서 정의한 이름과 연결됨    |
+| `@SequenceGenerator(...)`            | 오라클의 시퀀스를 어떻게 사용할지 정의                |
+| `sequenceName = "answer_seq"`        | 오라클에 존재하는 시퀀스 객체 이름 (수동 생성 필요함) |
+| `allocationSize = 1`                 | 한 번에 1씩 증가 (Oracle과의 싱크 맞춤)               |
+
+* 시퀀스 생성
+
+  **주의**: Oracle DB에 `answer_seq`라는 시퀀스가 실제로 존재해야 함.
+
+  ```sql
+  CREATE SEQUENCE answer_seq START WITH 1 INCREMENT BY 1;
+  ```
+
+* @Id
+
+  * 이 필드가 **기본키(PK)** 임을 선언.
+
+  * DB에서 유일하게 식별할 수 있는 컬럼.
+
+* @GeneratedValue(...)
+
+  * 기본키 값이 자동으로 생성되도록 설정.
+
+  * Oracle에서는 `IDENTITY`를 지원하지 않기 때문에 `SEQUENCE` 전략을 사용.
+
+* @SequenceGenerator(...)
+
+  * 시퀀스 사용 설정.
+
+    | 속성               | 설명                                             |
+    | ------------------ | ------------------------------------------------ |
+    | `name`             | 이 클래스 내에서 사용할 이름                     |
+    | `sequenceName`     | 실제 DB에 있는 Oracle 시퀀스 이름 (`answer_seq`) |
+    | `allocationSize=1` | 시퀀스 값을 한 번에 하나씩 증가시킴              |
+
+#### content 필드
+
+```java
+@Column(name = "content", columnDefinition = "CLOB", nullable = false)
+private String content;
+```
+
+* @Column(...)
+
+  * DB 컬럼의 속성을 지정.
+
+  * 여기서는 `name`, `columnDefinition`, `nullable` 세 가지 설정.
+
+    | 속성                        | 설명                                                         |
+    | --------------------------- | ------------------------------------------------------------ |
+    | `name = "content"`          | DB 컬럼명을 명시적으로 `content`로 지정                      |
+    | `columnDefinition = "CLOB"` | 오라클에서는 긴 문자열을 저장할 때 `TEXT`가 아니라 `CLOB` 타입을 사용해야 함 |
+    | `nullable = false`          | null 값을 허용하지 않음 (필수 입력 항목)                     |
+
+#### createDate 필드
+
+```java
+@Column(name = "createDate", nullable = false)
+private LocalDateTime createDate;
+```
+
+* 답변이 작성된 시간 저장용 필드.
+
+* `LocalDateTime` → Oracle에서는 `TIMESTAMP`로 매핑됨.
+
+* `nullable = false` → 이 값은 반드시 있어야 함.
+
+| 요소                  | 설명                                                    |
+| --------------------- | ------------------------------------------------------- |
+| `name = "createDate"` | DB 컬럼명을 `createDate`로 설정                         |
+| `nullable = false`    | 반드시 값이 있어야 함                                   |
+| `LocalDateTime`       | 자바의 날짜/시간 API. 오라클에서는 `TIMESTAMP`로 저장됨 |
+
+#### question 필드(외래 키, 관계 매핑)
+
+```java
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "question_id", nullable = false)
+private Question question;
+```
+
+* @ManyToOne
+
+  * 이 필드가 **다대일(N:1) 관계**임을 나타냄.
+
+  * 여러 개의 `Answer`가 하나의 `Question`에 달릴 수 있음.
+
+* fetch = FetchType.LAZY
+
+  * **지연 로딩 설정**.
+  * `Answer`를 조회할 때 `Question`은 **즉시 불러오지 않고**, 실제 접근 시에만 불러옴.
+  * 성능 최적화에 매우 중요함.
+
+* @JoinColumn(...)
+
+  * 이 필드를 DB에서 어떤 컬럼에 매핑할지 설정.
+
+    | 속성                   | 설명                                 |
+    | ---------------------- | ------------------------------------ |
+    | `name = "question_id"` | 외래 키 컬럼명                       |
+    | `nullable = false`     | 반드시 질문이 연결되어야만 저장 가능 |
+
+  * 실제로는 `ANSWER` 테이블에 `QUESTION_ID`라는 컬럼이 생기고,
+
+  * 이는 `QUESTION(ID)`를 참조하는 외래 키가 됨.
+
+| 요소                                | 설명                                                         |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `@ManyToOne`                        | 여러 개의 `Answer`가 하나의 `Question`에 속함 (N:1 관계)     |
+| `fetch = FetchType.LAZY`            | 지연 로딩 설정. 실제 접근할 때만 `Question` 객체를 조회함 → 성능 최적화 |
+| `@JoinColumn(name = "question_id")` | 외래 키 컬럼명을 명시적으로 `question_id`로 설정             |
+| `nullable = false`                  | 반드시 `Question`과 연결되어야 함 (null 불가)                |
+
+※ 이 설정에 의해 DB에 `QUESTION_ID` 컬럼이 생기고, `QUESTION` 테이블의 기본키와 외래 키 관계를 맺음.
+
+#### 전체 테이블 생성 SQL 예시 (Oracle 기준)
+
+```sql
+CREATE TABLE ANSWER (
+    ID NUMBER PRIMARY KEY,
+    CONTENT CLOB NOT NULL,
+    CREATE_DATE TIMESTAMP NOT NULL,
+    QUESTION_ID NUMBER NOT NULL,
+    CONSTRAINT FK_ANSWER_QUESTION FOREIGN KEY (QUESTION_ID) REFERENCES QUESTION(ID)
+);
+
+CREATE SEQUENCE answer_seq START WITH 1 INCREMENT BY 1;
+```
+
+#### 이 엔티티의 쓰임 예시 (서비스 코드에서)
+
+```sql
+Question q = questionRepository.findById(1L).orElseThrow();
+Answer a = new Answer();
+a.setContent("이것은 오라클에서 저장되는 답변입니다.");
+a.setCreateDate(LocalDateTime.now());
+a.setQuestion(q);
+answerRepository.save(a);
+```
 
 ## 리포지터리로 데이터베이스 관리하기
 
 앞서 엔티티로 테이블을 구성하여 데이터를 관리할 준비를 마쳤다. 하지만 엔티티만으로는 테이블의 데이터를 저장, 조회, 수정, 삭제 등을 할 수 없다. 이와 같이 데이터를 관리하려면 데이터베이스와 연동하는 JPA 리포지터리가 반드시 필요하다.
 
+#### 리포지터리의 역할
+
+* 리포지터리는 **엔티티 객체(`Question`)와 데이터베이스 사이에서 중개 역할**
+* 즉, `Question` 객체를 데이터베이스에 저장하거나, 불러오거나, 삭제하거나, 수정할 때 **직접 SQL을 작성하지 않아도** 되게 한다.
+* **비즈니스 로직과 데이터 접근 로직을 분리**해서 코드 유지 보수성과 확장성을 높여주는 구조이다.
+
+#### Spring Data JPA의 장점
+
+* `JpaRepository`를 상속하면 수많은 기능이 자동으로 구현된다.
+* 즉, **SQL 없이도 CRUD가 자동으로 제공**되며, 메서드 이름만 잘 지어도 조건 검색이 가능하다.
+
 ### 리포지터리 생성하기
 
-엔티티가 DB 테이블을 생성했다면, 리포지터리는 이와 같이 생성된 DB 테이블의 데이터들을 저장, 조회, 수정, 삭제 등을 할 수 있도록 도와주는 인터페이스이다. 이때 리포지터리는 테이블에 접근하고, 데이터를 관리하는 메서드(예를 들어 findAll, save 등)를 제공한다.
+#### QuestionRepository
 
-1. 리포지터리를 만들기 위해 com.mysite.sbb 패키지를 선택한 후 마우스 오른쪽 버튼을 누르고 New - Interface를 클릭해 QuestionRepository 인터페이스를 생성한다.
+```java
+package com.mysite.sbb;
 
-   ```java
-   package com.mysite.sbb;
-   
-   import org.springframework.data.jpa.repository.JpaRepository;
-   
-   public interface QuestionRepository extends JpaRepository<Question, Integer> {
-   	
-   }
-   ```
+import org.springframework.data.jpa.repository.JpaRepository;
 
-   생성한 QuestionRepository 인터페이스를 리포지터리로 만들기 위해 JpaRepository 인터페이스를 상속한다. JpaRepository는 JPA가 제공하는 인터페이스 중 하나로 CRUD 작업을 처리하는 메서드를 이미 내장하고 있어 데이터 관리 작업을 좀 더 편리하게 처리할 수 있다. JpaRepository<Question, Integer>는 Question 엔티티로 리포지터리를 생성한다는 의미이다. Question 엔티티의 기본키의 자료형이 Integer임을 이와 같이 추가로 지정해야 한다.
+public interface QuestionRepository extends JpaRepository<Question, Long> {
+}
+```
 
-2. 마찬가지로 AnswerRepository 인터페이스를 생성한다.
+##### 패키지 및 import
 
-   ```java
-   package com.mysite.sbb;
-   
-   import org.springframework.data.jpa.repository.JpaRepository;
-   
-   public interface AnswerRepository extends JpaRepository<Answer, Integer> {
-   
-   }
-   ```
+```java
+package com.mysite.sbb;
+```
 
-   이제 QuestionRepository, AnswerRepository를 이용하여 question, answer 테이블에 데이터를 저장, 조회, 수정, 삭제할 수 있다.
+* 이 파일이 소속된 패키지.
+* 보통 Spring Boot 애플리케이션에서 루트 클래스가 `com.mysite.sbb`이면, 자동으로 이 패키지 아래 있는 모든 클래스들이 **컴포넌트 스캔** 대상이 돼서 자동 등록됨.
+* 따라서 리포지터리를 이 위치에 두면 Spring이 감지하고 자동으로 사용할 준비를 마침.
+
+```java
+import org.springframework.data.jpa.repository.JpaRepository;
+```
+
+* Spring Data JPA에서 제공하는 **레포지터리 인터페이스의 슈퍼 클래스**를 가져온 것이다.
+* 이걸 상속하면 CRUD, 페이징, 정렬 등 기본 기능을 다 사용할 수 있다.
+
+##### QuestionRepository Interface
+
+```java
+public interface QuestionRepository extends JpaRepository<Question, Long> {
+}
+```
+
+* `interface`: 클래스가 아니라 인터페이스이기 때문에, 직접 구현체를 만들 필요가 없다.
+* `JpaRepository<Question, Long>`
+  * Spring Data JPA가 제공하는 가장 강력한 기본 인터페이스.
+  * 내부적으로는 `CrudRepository`, `PagingAndSortingRepository` 등을 상속받고 있어서 **모든 기본 기능을 내장**하고 있다.
+  * 제네릭 타입 지정.
+    - `Question` : 이 레포지터리가 다룰 **엔티티 클래스**
+    - `Long` : 해당 엔티티의 **기본 키 타입**
+
+##### QuestionRepository가 자동으로 제공하는 메서드들
+
+| 메서드명         | 기능                             |
+| ---------------- | -------------------------------- |
+| `save(entity)`   | 엔티티 저장 또는 수정            |
+| `findById(id)`   | ID로 엔티티 조회 (Optional 반환) |
+| `findAll()`      | 모든 엔티티 목록 조회            |
+| `delete(entity)` | 특정 엔티티 삭제                 |
+| `count()`        | 총 개수 반환                     |
+| `existsById(id)` | 존재 여부 확인                   |
+
+이 외에도 아래처럼 메서드 기반 쿼리 메서드도 추가 가능하다.
+
+```java
+List<Question> findBySubject(String subject);
+List<Question> findBySubjectLike(String pattern);
+```
+
+아래는 위 표의 리포지터리 메서드를 사용하는 예제이다.
+
+* `save(entity)`
+
+  ```java
+  Question q = new Question();
+  q.setSubject("JPA란?");
+  q.setContent("Java Persistence API에 대해 질문합니다.");
+  q.setCreateDate(LocalDateTime.now());
+  
+  questionRepository.save(q);
+  ```
+
+* `findById(id)`
+
+  ```java
+  Optional<Question> oq = questionRepository.findById(1L);
+  if (oq.isPresent()) {
+      Question q = oq.get();
+      System.out.println(q.getSubject());
+  }
+  ```
+
+  * 반환 타입이 `Optional<T>`인 이유:
+     해당 ID가 없을 수도 있기 때문에.
+  * `Optional`은 널 안전성을 제공함 (`.isPresent()`, `.orElse()` 등 사용 가능)
+
+* `findAll()`
+
+  ```java
+  List<Question> questionList = questionRepository.findAll();
+  for (Question q : questionList) {
+      System.out.println(q.getId() + " / " + q.getSubject());
+  }
+  ```
+
+  * `findAll()`은 테이블 내 전체 레코드를 `List`로 반환함.
+  * 내부적으로는 `SELECT * FROM question`을 수행하는 것과 같음.
+
+* `delete(entity)`
+
+  ```java
+  Optional<Question> oq = questionRepository.findById(1L);
+  if (oq.isPresent()) {
+      questionRepository.delete(oq.get());
+  }
+  ```
+
+  * `delete()`는 해당 객체가 존재해야 함 (그래서 `findById()`로 먼저 찾음).
+  * 내부적으로는 `DELETE FROM question WHERE id = ?`와 같음.
+
+* `count()`
+
+  ```java
+  long total = questionRepository.count();
+  System.out.println("총 질문 개수: " + total);
+  ```
+
+  * 내부적으로는 `SELECT COUNT(*) FROM question`과 같은 쿼리를 실행함.
+  * 반환 타입은 `long`이야.
+
+* `existsById(id)`
+
+  ```java
+  boolean exists = questionRepository.existsById(1L);
+  System.out.println("ID 1이 존재하는가? " + exists);
+  ```
+
+  * 내부적으로는 `SELECT 1 FROM question WHERE id = ?` 같은 쿼리를 실행해.
+  * 결과가 존재하면 `true`, 없으면 `false`를 반환함.
+
+#### AnswerRepository
+
+마찬가지로 Answer 리포지터리도 생성한다.
+
+```java
+package com.mysite.sbb;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface AnswerRepository extends JpaRepository<Answer, Long> {
+}
+```
 
 ### JUnit 설치하기
 
@@ -944,129 +1571,365 @@ dependencies {
 
 추가 후 Refresh Gradle Project를 선택하여 JUnit 설치를 마친다. JUnit을 사용할 준비가 된 것이다.
 
-### 질문 데이터 저장하기
+#### 질문 데이터 저장하기
 
-1. 질문 엔티티로 테이블을 만들었으니 이제 만들어진 테이블에 데이터를 생성하고 저장한다. 먼저, src/test/java 디렉터리의 com.mysite.sbb 패키지에 SbbApplicationTests.java 파일을 열어 본다.
+질문 엔티티로 테이블을 만들었으니 이제 만들어진 테이블에 데이터를 생성하고 저장한다. 먼저, src/test/java 디렉터리의 com.mysite.sbb 패키지에 SbbApplicationTests.java 파일을 열어 본다.
 
-   ![image-20250411180222214](./assets/image-20250411180222214.png)
+![image-20250411180222214](./assets/image-20250411180222214.png)
 
-2. SbbApplicationTests.java 파일을 다음과 같이 수정한다.
+#### SbbApplicationTests.java
 
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   
-   	@Test
-   	void testJpa() {
-   		Question q1 = new Question();
-   		q1.setSubject("sbb가 무엇인가요?");
-   		q1.setContent("sbb에 대하여 알고 싶다.");
-   		q1.setCreateDate(LocalDateTime.now());
-   		this.questionRepository.save(q1);
-   		
-   		Question q2 = new Question();
-   		q2.setContent("스프링 부트 모델 질문");
-   		q2.setContent("id는 자동으로 생성되는가?");
-   		q2.setCreateDate(LocalDateTime.now());
-   		this.questionRepository.save(q2);
-   	}
-   
-   }
-   ```
+먼저, 아래 Test 코드를 실행하기 위해 DB SQL 문을 작성한다.
 
-   @SpringBootTest 어노테이션은 SbbApplicationTests 클래스가 스프링 부트의 테스트 클래스임을 의미한다. 그리고 질문 엔티티의 데이터를 생성할 때 리포지터리(여기서는 QuestionRepository)가 필요하므로 @Autowired 어노테이션을 통해 스프링의 '의존성 주입(DI)'이라는 기능을 사용하여 QuestionRepository의 객체를 주입했다.
+```sql
+DROP SEQUENCE question_seq;
+DROP SEQUENCE answer_seq;
 
-   ※ 스프링의 의존성 주입(DI)이란 스프링이 객체를 대신 생성하여 주입하는 기법을 말한다.
+DROP TABLE ANSWER;
+DROP TABLE QUESTION;
 
-   > cf) : @Autowired 어노테이션
-   >
-   > 앞서 작성한 테스트 코드를 보면 questionRepository 변수는 선언만 되어 있고 그 값이 비어 있다. 하지만 @Autowired 어노테이션을 해당 변수에 적용하면 스프링 부트가 questionRepository 객체를 자동으로 만들어 주입한다. 객체를 주입하는 방식에는 @Autowired 어노테이션을 사용하는것 외에 Setter 메서드 또는 생성자를 사용하는 방식이 있다. 순환 참조 문제와 같은 이유로 개발 시 @Autowired보다는 생성자를 통한 객체 주입 방식을 권장한다. 하지만 테스트 코드의 경우 JUnit이 생성자를 통한 객체 주입을 지원하지 않으므로 테스트 코드 작성 시에만 @Autowired를 사용하고 실제 코드 작성 시에는 생성자를 통한 객체 주입 방식을 사용한다. 
+CREATE SEQUENCE question_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE answer_seq START WITH 1 INCREMENT BY 1;
 
-   @Test 어노테이션은 testJpa 메서드가 테스트 메서드임을 나타낸다. SbbApplicationTests 클래스를 JUnit으로 실행하면 @Test 어노테이션이 붙은 testJpa 메서드가 실행된다.
+CREATE TABLE QUESTION (
+    ID NUMBER PRIMARY KEY,
+    SUBJECT VARCHAR2(200),
+    CONTENT CLOB,
+    CREATE_DATE TIMESTAMP
+);
 
-   testJpa 메서드의 내용을 자세히 보자. testJpa 메서드는 q1, q2라는 질문 엔티티의 객체를 생성하고 QuestionRepository를 이용하여 그 값을 DB에 저장한다. 이와 같이 데이터를 저장하면 DB의 question 테이블은 다음과 같은 형태로 저장될 것이다.
+CREATE TABLE ANSWER (
+    ID NUMBER PRIMARY KEY,
+    CONTENT CLOB NOT NULL,
+    CREATE_DATE TIMESTAMP NOT NULL,
+    QUESTION_ID NUMBER NOT NULL,
+    CONSTRAINT FK_ANSWER_QUESTION FOREIGN KEY (QUESTION_ID) REFERENCES QUESTION(ID)
+);
 
-   | ID   | Content                   | CreateDate          | Subject                      |
-   | ---- | ------------------------- | ------------------- | ---------------------------- |
-   | 1    | sbb에 대해서 알고 싶다.   | 2025-04-11-18:22:22 | sbb가 무엇인가?              |
-   | 2    | id는 자동으로 생성되는가? | 2025-04-11-18:22:22 | 스프링 부트 모델 질문입니다. |
 
-3. 이제 작성한 SbbApplicationTests 클래스를 실행한다. Run - Run As - JUnit Test 순서대로 선택하면 SbbApplicationTests 클래스를 실행할 수 있다.
+SELECT * FROM QUESTION;
+SELECT * FROM ANSWER;
 
-4. 하지만 로컬 서버가 이미 구동 중이라면 'The file is locked: nio:/Users/pahkey/local.mv.db'와 비슷한 오류가 발생할 것이다. 오라클 DB는 파일 기반의 DB인데, 이미 로컬 서버가 동일한 DB 파일(local.mv.db)을 점유하고 있어 이러한 오류가 발생하는 것이다. 따라서 테스트할 때는 먼저 로컬 서버를 중지해야 한다. 로컬 서버는 다음과 같이 Boot Dashboard에서 중지 버튼을 클릭하여 중지할 수 있다.
+INSERT INTO QUESTION(ID, SUBJECT, CONTENT, CREATE_DATE) VALUES (question_seq.NEXTVAL, 'ASDF', 'ASDF', SYSTIMESTAMP);
+INSERT INTO QUESTION(ID, SUBJECT, CONTENT, CREATE_DATE) VALUES (question_seq.NEXTVAL, 'sbb가 무어쉽니까?', 'ASDF', SYSTIMESTAMP);
 
-5. 만약 오류가 발생했다면 로컬 서버를 중지하고 Run - Run을 클릭한 뒤, 다시 테스트를 실행한다. 그러면 오른쪽과 같은 JUnit 화면이 나타나고 오류 없이 잘 실행된다.
+commit;
+```
 
-6. 실제 DB에 값이 잘 들어갔는지 확인해 보기 위해 다시 로컬 서버를 시작하고 DB에 접속하여 다음 쿼리를 실행한다.
+아래 코드는 Spring Boot 프로젝트 내에서 `Question`이라는 엔티티를 저장하는 **JPA 기능을 테스트하는 JUnit 테스트 클래스**이다.
 
-   ```sql
-   SELECT * FROM QUESTION
-   ```
+```java
+package com.mysite.sbb.test.question;
 
-   그러면 다음과 같이 우리가 저장한 Question 객체의 값이 DB의 데이터로 저장된 것을 확인할 수 있다.
+import java.time.LocalDateTime;
 
-   ※ id는 질문 엔티티의 기본키로, 질문 엔티티를 생성할 때 @GeneratedValue를 활용해 설정했던 대로 속성값이 자동으로 1씩 증가하는 것을 확인할 수 있다.
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
 
-   ※ JPA가 적용되지 않으므로(에러) 테이블을 아래와 같이 1씩 증가하도록 작성했다.
+import com.mysite.sbb.Question;
+import com.mysite.sbb.QuestionRepository;
 
-   ```sql
-   DROP TABLE ANSWER;
-   DROP TABLE QUESTION;
-   
-   CREATE TABLE QUESTION(
-       ID              NUMBER(10) GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-       SUBJECT         NVARCHAR2(20),
-       CONTENT         CLOB,
-       CREATE_DATE     DATE
-   );
-   
-   CREATE TABLE ANSWER(
-       ID              NUMBER(10)  PRIMARY KEY,
-       QUESTION_ID     NUMBER(10),
-       CONTENT         CLOB,
-       CREATE_DATE     DATE,
-       CONSTRAINT      fk_question     FOREIGN KEY (question_id) REFERENCES question(id) ON DELETE CASCADE   
-   );
-   ```
+import jakarta.transaction.Transactional;
 
-### 질문 데이터 조회하기
+@SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 오라클 사용!
+@Transactional // 테스트 끝나면 자동으로 롤백됨
+class SbbApplicationTests_sql_insert {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+
+	@Test
+	void testJpa() {
+		Question q1 = new Question();
+		q1.setSubject("sbb가 무엇인가요?");
+		q1.setContent("sbb에 대하여 알고 싶다.");
+		q1.setCreateDate(LocalDateTime.now());
+		this.questionRepository.save(q1);
+		
+		Question q2 = new Question();
+		q2.setContent("스프링 부트 모델 질문");
+		q2.setContent("id는 자동으로 생성되는가?");
+		q2.setCreateDate(LocalDateTime.now());
+		this.questionRepository.save(q2);
+	}
+
+}
+```
+
+#### @SpringBootTest
+
+* 전체 Spring ApplicationContext를 로딩해서 테스트한다. 즉, **Spring Boot 환경 전체를 통합적으로 테스트**할 수 있는 환경을 만들어준다.
+   → DI, JPA, Controller, Service 등 모든 스프링 구성 요소 사용 가능.
+* 테스트 실행 시 **스프링 컨텍스트 전체**를 시작합니다.
+* 이 애너테이션 덕분에, `@Autowired` 같은 의존성 주입이 작동합니다.
+* `application.yml` 또는 `application.properties`에 설정된 DB도 연결되고, 실제 환경과 거의 동일하게 테스트 가능.
+
+#### 클래스 선언
+
+```java
+class SbbApplicationTests {
+```
+
+* 테스트 클래스.
+* 관례적으로 이름에 `Tests` 또는 `Test`를 붙임.
+
+* DI (Dependency Injection)
+
+#### DI (Dependency Injection)
+
+```java
+@Autowired
+private QuestionRepository questionRepository;
+```
+
+* `QuestionRepository`는 `JpaRepository<Question, Integer>`를 상속한 인터페이스.
+* Spring이 자동으로 구현체를 만들어 주입해줌.
+* 덕분에 `questionRepository.save(...)`처럼 JPA를 사용할 수 있음.
+
+#### @Test 애너테이션
+
+```java
+@Test
+void testJpa() {
+```
+
+* 이 메서드는 테스트용 메서드임을 나타낸다.
+* JUnit은 이 애너테이션이 붙은 메서드를 자동으로 실행한다.
+
+#### 테스트 내용 (JPA 저장 로직)
+
+```java
+Question q1 = new Question();
+q1.setSubject("sbb가 무엇인가요?");
+q1.setContent("sbb에 대하여 알고 싶다.");
+q1.setCreateDate(LocalDateTime.now());
+this.questionRepository.save(q1);
+
+Question q2 = new Question();
+q2.setSubject("스프링 부트 모델 질문");
+q2.setContent("id는 자동으로 생성되는가?");
+q2.setCreateDate(LocalDateTime.now());
+this.questionRepository.save(q2);
+```
+
+* `q1`이라는 `Question` 객체를 새로 생성한 후:
+  - 제목(subject) 설정
+  - 내용(content) 설정
+  - 생성일자(LocalDateTime) 설정
+  - `save()`를 통해 DB에 저장
+
+​	※ `save()`는 Spring Data JPA의 기본 메서드로, 내부적으로는 `EntityManager.persist()`나 `merge()`가 동작한다.
+
+#### ※  JUnit이 중요한 이유
+
+1. **버그 사전 예방**: 코드의 이상 여부를 미리 파악 가능
+2. **자동화된 회귀 테스트**: 수동 테스트 없이 전체 기능 검증 가능
+3. **리팩토링 안전성 확보**: 구조 바꿔도 기존 기능이 잘 작동하는지 확인 가능
+4. **개발 생산성 향상**: 반복적인 테스트를 자동화
+
+#### ※ 추가 개념 정리 (필요하면 확장 가능)
+
+| 개념                        | 설명                             |
+| --------------------------- | -------------------------------- |
+| `@BeforeEach`, `@AfterEach` | 각 테스트 전후로 실행되는 메서드 |
+| `@BeforeAll`, `@AfterAll`   | 테스트 전체 전/후 실행           |
+| `assertEquals(a, b)`        | `a == b`인지 확인                |
+| `@Transactional`            | 테스트 후 DB 자동 롤백           |
+| `@DataJpaTest`              | JPA 레이어만 슬림하게 테스트     |
+
+##### `@BeforeEach`, `@AfterEach`, `@BeforeAll`, `@AfterAll`
+
+```java
+import org.junit.jupiter.api.*;
+import java.time.LocalDateTime;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS) // static 없이 @BeforeAll 사용하기 위해 필요
+@SpringBootTest
+public class LifecycleTest {
+
+    @BeforeAll
+    void beforeAll() {
+        System.out.println("테스트 전체 시작 전 실행");
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        System.out.println("각 테스트 실행 전");
+    }
+
+    @Test
+    void testExample1() {
+        System.out.println("테스트 1 실행");
+    }
+
+    @Test
+    void testExample2() {
+        System.out.println("테스트 2 실행");
+    }
+
+    @AfterEach
+    void afterEach() {
+        System.out.println("각 테스트 실행 후");
+    }
+
+    @AfterAll
+    void afterAll() {
+        System.out.println("테스트 전체 종료 후 실행");
+    }
+}
+
+```
+
+##### `assertEquals`
+
+```java
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@Test
+void testAddition() {
+    int result = 2 + 3;
+    assertEquals(5, result, "2 + 3 은 5여야 한다.");
+}
+```
+
+##### `@Transactional` – 테스트 후 DB 자동 롤백
+
+```java
+import org.springframework.transaction.annotation.Transactional;
+
+@Transactional
+@SpringBootTest
+public class TransactionalTest {
+
+    @Autowired
+    private QuestionRepository questionRepository;
+
+    @Test
+    void testSaveAndRollback() {
+        Question q = new Question();
+        q.setSubject("롤백 테스트");
+        q.setContent("이 테스트는 끝나고 DB에 저장되지 않아야 합니다.");
+        q.setCreateDate(LocalDateTime.now());
+
+        questionRepository.save(q);
+
+        // 저장 여부 확인 (테스트에서는 assert로 검증 가능)
+        Question result = questionRepository.findById(q.getId()).orElse(null);
+        assertEquals("롤백 테스트", result.getSubject());
+    }
+
+    // 테스트 끝나면 트랜잭션 롤백되므로 DB에 남지 않음
+}
+```
+
+##### ※ 테스트에서 `@Transactional`이 하는 일
+
+Spring Boot에서 테스트할 때 `@Transactional`을 붙이면,
+ **테스트 메서드가 끝난 뒤 자동으로 DB 트랜잭션을 롤백한다.**
+
+즉,
+
+- `save()`, `delete()`, `update()` 같은 DB 조작을 하더라도
+- 테스트 끝나면 실제 DB에는 **변경사항이 남지 않는다**
+
+##### ※ 왜 롤백이 필요한가?
+
+1. **테스트 데이터가 실제 DB를 오염시키지 않게 하기 위해서이다.**
+2. 테스트는 여러 번 돌리니까, 남은 데이터가 있으면 다음 테스트에 영향을 줘서 문제가 생긴다.
+3. 롤백을 안 하면 매번 insert → delete 코드까지 써야 하는데, 자동 롤백을 하면 편하다.
+
+##### `@DataJpaTest` – 슬림한 JPA 레이어 테스트
+
+```java
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+@DataJpaTest // JPA 관련 빈만 로딩되고, 빠르게 동작
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+public class QuestionRepositoryTest {
+
+    @Autowired
+    private QuestionRepository questionRepository;
+
+    @Test
+    void saveAndFind() {
+        Question q = new Question();
+        q.setSubject("DataJpaTest 예제");
+        q.setContent("간단한 저장 및 조회");
+        q.setCreateDate(LocalDateTime.now());
+        questionRepository.save(q);
+
+        Question result = questionRepository.findById(q.getId()).orElse(null);
+        assertEquals("DataJpaTest 예제", result.getSubject());
+    }
+}
+```
+
+`@DataJpaTest`는 기본적으로 임시 DB **in-memory DB (H2)** 를 사용한다.
+
+`application.yml`에서 H2 설정하거나 `@AutoConfigureTestDatabase(replace = Replace.NONE)`으로 실제 DB 사용도 가능.
+
+| 요소                                     | 설명                                                         |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `@AutoConfigureTestDatabase`             | Spring Boot 테스트에서 사용할 **DB 자동 설정 방식을 정의**하는 애너테이션 |
+| `replace = ...`                          | 어떤 경우에 테스트 DB를 **자동으로 교체(replace)할지** 결정하는 옵션 |
+| `AutoConfigureTestDatabase.Replace.NONE` | "절대 교체하지 마!" → 즉, **기존 설정(application.yml)을 그대로 사용**하라는 뜻 |
+
+#### 질문 데이터 조회하기
 
 리포지터리가 제공하는 메서드들을 하나씩 살펴보고 이를 활요해 데이터를 조회한다.
-
-#### findAll 메서드
-
-SbbApplicationTests.java 파일에서 작성한 테스트 코드를 다음과 같이 수정해 보자.
 
 ```java
 package com.mysite.sbb;
 
-import java.time.LocalDateTime;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import jakarta.transaction.Transactional;
 
 @SpringBootTest
-class SbbApplicationTests {
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional
+public class SbbApplicationTests_sql_select {
 	
 	@Autowired
 	private QuestionRepository questionRepository;
+	
+	@Test
+	void testJpa_findAll() {
+		List<Question> all = this.questionRepository.findAll();
+		assertEquals(2, all.size());
+		Question q = all.get(0);
+		assertEquals("sbb가 무엇인가요?", q.getSubject());
+	}
+	
+	@Test
+	void testJpa_findById() {
+		Optional<Question> oq = this.questionRepository.findById(1L);
+		if(oq.isPresent()) {
+			Question q = oq.get();
+			assertEquals("sbb가 무엇인가요?", q.getSubject());
+		}
+	}
+	
+}
 
+```
+
+##### findAll 메서드
+
+```java
+...
+    
 	@Test
 	void testJpa() {
 		List<Question> all = this.questionRepository.findAll();
@@ -1074,14 +1937,70 @@ class SbbApplicationTests {
 		Question q = all.get(0);
 		assertEquals("sbb가 무엇인가요?", q.getSubject());
 	}
+
+...
+```
+
+question 테이블에 저장된 모든 데이터를 조회하기 위해서 리포지터리(questionRepository)의 findAll 메서드를 사용했다. 앞서 2개의 질문 데이터를 저장했기 때문에 데이터 사이즈는 2가 되어야 한다. 데이터 사이즈가 2인지 확인하기 위해 JUnit의 assertEquals 메서드를 사용하는데, 이 메서드는 테스트에서 예상한 결과와 실제 결과가 동일한지를 확인하는 목적으로 사용한다. 즉, JPA 또는 DB에서 데이터를 올바르게 가져오는지를 확인하려는 것이다. 
+
+assertEquals(기잿값, 실젯값)와 같이 작성하고 기댓값과 실젯값이 동일한지를 조사한다. 만약 기댓값과 실젯값이 동일하지 않다면 테스트는 실패로 처리된다. 여기서는 우리가 저장한 첫 번째 데이터의 제목이 'sbb가 무엇인가요?' 데이터와 일치하는지도 테스트했다. 테스트할 때 로컬 서버를 중지하고 다시 한번 Run - Run As - JUnit Test을 실행하면 테스트가 성공했다고 표시될 것이다.
+
+##### findById 메서드
+
+이번에는 질문 엔티티의 기본인 id의 값을 활용해 데이터를 조회한다.
+
+```java
+...
+    
+	@Test
+	void testJpa_findById() {
+		Optional<Question> oq = this.questionRepository.findById(1L);
+		if(oq.isPresent()) {
+			Question q = oq.get();
+			assertEquals("sbb가 무엇인가요?", q.getSubject());
+		}
+	}
+
+...
+```
+
+id값으로 데이터를 조회하기 위해서는 리포지터리의 findById 메서드를 사용해야 한다. 여기서 questionRepository를 사용하여 DB에서 id가 1인 질문을 조회한다. 이때 findById의 리턴 타입은 Question이 아닌 Optional임에 주의한다. findById로 호출한 값이 존재할 수도 있고, 존재하지 않을 수도 있어서 리턴 타입으로 Optional이 사용된 것이다.
+
+Optional은 그 값을 처리하기 위한(null값을 유연하게 처리하기 위한) 클래스로, isPresent() 메서드로 값이 존재하는지 확인할 수 있다. 만약 isPresent()를 통해 값이 존재한다는 것을 확인했다면, get() 메서드를 통해 실제 Question 객체의 값을 얻는다. 즉, 여기서는 DB에서 ID가 1인 질문을 검색하고, 이에 해당하는 질문의 제목이 'sbb가 무엇인가요?'인 경우에 JUnit 테스트를 통과하게 된다.
+
+##### findBySubject 메서드
+
+이번에는 질문 엔티티의 subject값으로 데이터를 조회한다.
+
+JpaRepository를 상속하면 다음처럼 기본적인 CRUD 메서드들은 자동으로 제공된다.
+
+| 메서드              | 설명                 |
+| ------------------- | -------------------- |
+| `findById(Long id)` | ID로 조회            |
+| `findAll()`         | 전체 목록 조회       |
+| `save(entity)`      | 저장 (INSERT/UPDATE) |
+| `delete(entity)`    | 삭제                 |
+
+하지만 리포지터리는 findBySubject 메서드를 기본적으로 제공하지는 않는다. 그래서 findBySubject 메서드를 사용하려면 다음과 같이 QuestionRepository 인터페이스를 변경해야 한다. 
+
+```java
+package com.mysite.sbb;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface QuestionRepository extends JpaRepository<Question, Long> {
+	Question findBySubject(String subject);
 }
 ```
 
-question 테이블에 저장된 모든 데이터를 조회하기 위해서 리포지터리(questionRepository)의 findAll 메서드를 사용했다. 앞서 2개의 질문 데이터를 저장했기 때문에 데이터 사이즈는 2가 되어야 한다. 데이터 사이즈가 2인지 확인하기 위해 JUnit의 assertEquals 메서드를 사용하는데, 이 메서드는 테스트에서 예상한 결과와 실제 결과가 동일한지를 확인하는 목적으로 사용한다. 즉, JPA 또는 DB에서 데이터를 올바르게 가져오는지를 확인하려는 것이다. assertEquals(기잿값, 실젯값)와 같이 작성하고 기댓값과 실젯값이 동일한지를 조사한다. 만약 기댓값과 실젯값이 동일하지 않다면 테스트는 실패로 처리된다. 여기서는 우리가 저장한 첫 번째 데이터의 제목이 'sbb가 무엇인가요?' 데이터와 일치하는지도 테스트했다. 테스트할 때 로컬 서버를 중지하고 다시 한번 Run - Run As - JUnit Test을 실행하면 테스트가 성공했다고 표시될 것이다.
+`JpaRepository`는 기본적으로 subject 같은 필드명으로 찾는 메서드는 제공하지 않는다.
+대신, 메서드 이름만 선언하면, Spring Data JPA가 이름을 보고 자동으로 구현한다.
 
-#### findById 메서드
+즉, findBy + 엔티티의 속성명(예를 들어 findBySubject)과 같은 리포지터리의 메서드를 작성하면 입력한 속성의 값으로 데이터를 조회할 수 있다.
 
-이번에는 질문 엔티티의 기본인 id의 값을 활용해 데이터를 조회한다.
+이것이 바로 **쿼리 메서드(Query Method)** 기능이다.
+
+다시 src/test/java 디렉터리로 돌아가 com.mysite.sbb 패키지의 SbbApplicationTests_sql_select.java를 수정해 subject 값으로 테이블에 저장된 데이터를 조회할 수 있다.
 
 ```java
 package com.mysite.sbb;
@@ -1104,91 +2023,48 @@ class SbbApplicationTests {
 
 	@Test
 	void testJpa() {
-		Optional<Question> oq = this.questionRepository.findById(1);
-		if(oq.isPresent()) {
-			Question q = oq.get();
-			assertEquals("sbb가 무엇인가요?", q.getSubject());
-		}
+		Question q = this.questionRepository.findBySubject("sbb가 무엇인가요?");
+		assertEquals(1, q.getId());
 	}
 
 }
 ```
 
-id값으로 데이터를 조회하기 위해서는 리포지터리의 findById 메서드를 사용해야 한다. 여기서 questionRepository를 사용하여 DB에서 id가 1인 질문을 조회한다. 이때 findById의 리턴 타입은 Question이 아닌 Optional임에 주의한다. findById로 호출한 값이 존재할 수도 있고, 존재하지 않을 수도 있어서 리턴 타입으로 Optional이 사용된 것이다.
+findBySubject 메서드를 호출할 때 실제 DB에서는 어떤 쿼리문이 실행되는지 살펴본다. 실행되는 쿼리문은 콘솔 로그에서 확인할 수 있다. 그러기 위해 다음과 같이 application.properties 파일을 수정한다.
 
-Optional은 그 값을 처리하기 위한(null값을 유연하게 처리하기 위한) 클래스로, isPresent() 메서드로 값이 존재하는지 확인할 수 있다. 만약 isPresent()를 통해 값이 존재한다는 것을 확인했다면, get() 메서드를 통해 실제 Question 객체의 값을 얻는다. 즉, 여기서는 DB에서 ID가 1인 질문을 검색하고, 이에 해당하는 질문의 제목이 'sbb가 무엇인가요?'인 경우에 JUnit 테스트를 통과하게 된다.
+```properties
+spring.application.name=sbb
 
-#### findBySubject 메서드
+#SERVER
+server.port=8080
 
-이번에는 질문 엔티티의 subject값으로 데이터를 조회한다.
+#DATABASE
+spring.datasource.url=jdbc:oracle:thin:@localhost:1521/XEPDB1
+spring.datasource.username=sbb
+spring.datasource.password=1234
+spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
 
-1. 아쉽게도 리포지터리는 findBySubject 메서드를 기본적으로 제공하지는 않는다. 그래서 findBySubject 메서드를 기본적으로 제공하지는 않는다. 그래서 findBySubject 메서드를 사용하려면 다음과 같이 QuestionRepository 인터페이스를 변경해야 한다. 먼저 src/main/java 디렉터리로 돌아가 com.mysite.sbb 패키지의 QuestionRepository.java를 수정한다.
+#JPA
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.show_sql=true
+```
 
-   ```java
-   package com.mysite.sbb;
-   
-   import org.springframework.data.jpa.repository.JpaRepository;
-   
-   public interface QuestionRepository extends JpaRepository<Question, Integer> {
-   	Question findBySubject(String subject);
-   }
-   ```
-
-2. 다시 src/test/java 디렉터리로 돌아가 com.mysite.sbb 패키지의 SbbApplicationTests.java를 수정해 subject 값으로 테이블에 저장된 데이터를 조회할 수 있다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   import java.util.Optional;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   import static org.junit.jupiter.api.Assertions.assertEquals;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   
-   	@Test
-   	void testJpa() {
-   		Question q = this.questionRepository.findBySubject("sbb가 무엇인가요?");
-   		assertEquals(1, q.getId());
-   	}
-   
-   }
-   ```
-
-   테스트 코드를 실행해 보면 성공적으로 통과된다. '인터페이스에 findBySubject라는 메서드를 선언만 하고 구현하지 않았는데 도대체 어떻게 실행되는 거지?'라는 궁금징이 생길 수 있다. 이는 JPA에 리포지터리의 메서드명을 분석하여 쿼리를 만들고 실행하는 기능이 있기 때문에 가능하다. 즉, findBy + 엔티티의 속성명(예를 들어 findBySubject)과 같은 리포지터리의 메서드를 작성하면 입력한 속성의 값으로 데이터를 조회할 수 있다.
-
-3. findBySubject 메서드를 호출할 때 실제 DB에서는 어떤 쿼리문이 실행되는지 살펴본다. 실행되는 쿼리문은 콘솔 로그에서 확인할 수 있다. 그러기 위해 다음과 같이 application.properties 파일을 수정한다.
+1. 그리고 다시 한번 테스트 코드를 실행한다. 그러면 다음과 같이 콘솔 로그에서 DB에서 실행된 쿼리문을 확인할 수 있다.
 
    ```
-   spring.application.name=sbb
-   
-   #SERVER
-   server.port=8080
-   
-   #DATABASE
-   spring.datasource.url=jdbc:oracle:thin:@localhost:1521/orcl
-   spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
-   spring.datasource.username=C##SCOTT
-   spring.datasource.password=0000
-   
-   
-   #JPA
-   spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.OracleDialect
-   spring.jpa.hibernate.ddl-auto=update
-   spring.jpa.properties.hibernate.format_sql=true
-   spring.jpa.properties.hibernate.show_sql=true
+   Hibernate: 
+       select
+           question_seq.nextval 
+       from
+           dual
+   Hibernate: 
+       select
+           question_seq.nextval 
+       from
+           dual
    ```
-
-4. 그리고 다시 한번 테스트 코드를 실행한다. 그러면 다음과 같이 콘솔 로그에서 DB에서 실행된 쿼리문을 확인할 수 있다.
 
    ```
    Hibernate: 
@@ -1201,297 +2077,290 @@ Optional은 그 값을 처리하기 위한(null값을 유연하게 처리하기 
            question q1_0 
        where
            q1_0.subject=?
+   Hibernate: 
+       select
+           q1_0.id,
+           q1_0.content,
+           q1_0.create_date,
+           q1_0.subject 
+       from
+           question q1_0
+   Hibernate: 
+       select
+           q1_0.id,
+           q1_0.content,
+           q1_0.create_date,
+           q1_0.subject 
+       from
+           question q1_0 
+       where
+           q1_0.id=?
    ```
 
    실행한 쿼리문 중 where 문에 조건으로 subject가 포함된 것을 확인할 수 있다.
 
-#### findBySubjectAndContent 메서드
+##### findBySubjectAndContent 메서드
 
-1. 이번에는 subject와 content를 함께 조회한다. SQL을 활용해 DB에서 두 개의 열(여기서는 엔티티의 속성)을 조회하기 위해서는 And 연산자를 사용한다. subject와 content 속성을 조회하기 위해 findBySubject와 마찬가지로 리포지터리에 findBySubjectAndContent 메서드를 추가해야 한다. 다음과 같이 QuestionRepository.java 파일을 수정한다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import org.springframework.data.jpa.repository.JpaRepository;
-   
-   public interface QuestionRepository extends JpaRepository<Question, Integer> {
-   	Question findBySubject(String subject);
-   	Question findBySubjectAndContent(String subject, String content);
-   }
-   ```
-
-2. 그리고 테스트 코드를 다음과 같이 작성한다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   import java.util.Optional;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   import static org.junit.jupiter.api.Assertions.assertEquals;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   
-   	@Test
-   	void testJpa() {
-   		Question q = this.questionRepository.findBySubjectAndContent("sbb가 무엇인가요?", "sbb에 대해서 알고 싶습니다.");
-   		assertEquals(1, q.getId());
-   	}
-   
-   }
-   
-   ```
-
-   ```
-   Hibernate: 
-       select
-           q1_0.id,
-           q1_0.content,
-           q1_0.create_date,
-           q1_0.subject 
-       from
-           question q1_0 
-       where
-           q1_0.subject=? 
-           and q1_0.content=?
-   ```
-
-   where 문에 and 연산자가 사용되어 subject와 content 열을 조회하는 것을 확인할 수 있다.
-
-   이렇듯 리포지터리의 메서드명은 데이터를 조회하는 쿼리문의 where 조건을 결정하는 역할을 한다. 여기서는 findBySubject, findBySubjectAndContent 두 메서드만 알아봤지만 상당히 많은 조합을 사용할 수 있다. 조합할 수 있는 메서드를 간단하게 표로 정리해 보았다.
-
-   | SQL 연산자       | 리포지터리의 메서드 예                                       | 설명                                                         |
-   | ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-   | And              | findBySubjectAndContent(String subject, String content)      | Subject, Content 열과 일치하는 데이터를 조회                 |
-   | Or               | findBySubjectOrContent(String subject, String content)       | Subject열 또는 Content 열과 일치하는 데이터를 조회           |
-   | Between          | findByCreateDateBetween(LocalDateTime fromDate, LocalDateTime toDate) | CreateDate 열의 데이터 중 정해진 범위 내에 있는 데이터를 조회 |
-   | LessThan         | findByLessThan(Integer id)                                   | id 열에서 조건보다 작은 데이터를 조회                        |
-   | GreaterThanEqual | findByIdGreaterThanEqual(Integer id)                         | id 열에서 조건보다 크거나 같은 데이터를 조회                 |
-   | Like             | findBySubjectLike(String subject)                            | Subject 열에서 문자열 'subject'와 같은 문자열을 포함한 데이터를 조회 |
-   | In               | findBySubjectIn(String[] subjects)                           | Subject 열의 데이터가 주어진 배열에 포함되는 데이터만 조회   |
-   | OrderBy          | findBySubjectOrderByCreateDateAsc(String subject)            | Subject 열 중 조건에 일치하는 데이터를 조회하여 그 데이터를 반환할 때 CreateDate 열을 오름차순으로 정렬하여 반환 |
-
-#### findBySubjectLike 메서드
-
-1. 이번에는 질문 엔티티의 subject 열 값들 중에 특정 문자열을 포함하는 데이터를 조회한다. SQL에서는 특정 문자열을 포함한 데이터를 열에서 찾을 때 Like를 사용한다. subject 열에서 특정 문자열을 포함하는 데이터를 찾기 위해 다음과 같이 findBySubjectLike 메서드를 리포지터리에 추가한다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.util.List;
-   
-   import org.springframework.data.jpa.repository.JpaRepository;
-   
-   public interface QuestionRepository extends JpaRepository<Question, Integer> {
-   	Question findBySubject(String subject);
-   	Question findBySubjectAndContent(String subject, String content);
-   	List<Question> findBySubjectLike(String subject);
-   }
-   ```
-
-2. 그리고 테스트 코드는 다음과 같이 수정한다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   import java.util.Optional;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   import static org.junit.jupiter.api.Assertions.assertEquals;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   
-   	@Test
-   	void testJpa() {
-   		List<Question> qList = this.questionRepository.findBySubjectLike("sbb%");
-   		Question q = qList.get(0);
-   		assertEquals("sbb가 무엇인가요?", q.getSubject());
-   	}
-   
-   }
-   ```
-
-   findBySubjectLike 메서드를 사용할 때 데이터 조회를 위한 조건이 되는 문자열로 sbb%와 같이 %를 적어 주어야 한다. %는 표기하는 위치에 따라 의미가 달라진다. 아래 표를 살펴보자.
-
-   | 표기 예 | 표기 위치에 따른 의미   |
-   | ------- | ----------------------- |
-   | sbb%    | 'sbb'로 시작하는 문자열 |
-   | %sbb    | 'sbb'로 끝나는 문자열   |
-   | %sbb%   | 'sbb'를 포함하는 문자열 |
-
-### 질문 데이터 수정하기
-
-1. 질문 엔티티의 데이터를 수정하는 테스트 코드를 작성한다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   import java.util.Optional;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   import static org.junit.jupiter.api.Assertions.assertEquals;
-   import static org.junit.jupiter.api.Assertions.assertTrue;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   
-   	@Test
-   	void testJpa() {
-   		Optional<Question> oq = this.questionRepository.findById(1);
-   		assertTrue(oq.isPresent());
-   		Question q = oq.get();
-   		q.setSubject("수정된 제목");
-   		this.questionRepository.save(q);
-   	}
-   
-   }
-   ```
-
-   질문 엔티티의 데이터를 조회한 다음, subject 속성을 '수정한 제목'이라는 값으로 수정했다. 변경된 질문을 DB에 저장하기 위해서 this.questionRepository.sava(q)와 같이 리포지터리의 save 메서드를 사용했다.
-
-2. 테스트를 수행해 보면 다음과 같이 콘솔 로그에서 update 문이 실행되었음을 확인할 수 있다.
-
-   ```
-   Hibernate: 
-       select
-           q1_0.id,
-           q1_0.content,
-           q1_0.create_date,
-           q1_0.subject 
-       from
-           question q1_0 
-       where
-           q1_0.subject like ?
-   ```
-
-   그리고 SELECT * FROM QUESTION 쿼리문을 입력하고 실행해 question 테이블을 확인하면 subject의 값이 변경되었음을 알 수 있다.
-
-   ![image-20250412153257018](./assets/image-20250412153257018.png)
-
-### 질문 데이터 삭제하기
-
-1. 이어서 데이터를 삭제한다. 여기서는 첫 번째 질문을 삭제해 본다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   import java.util.Optional;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   import static org.junit.jupiter.api.Assertions.assertEquals;
-   import static org.junit.jupiter.api.Assertions.assertTrue;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   
-   	@Test
-   	void testJpa() {
-   		assertEquals(2, this.questionRepository.count());
-   		Optional<Question> oq = this.questionRepository.findById(1);
-   		assertTrue(oq.isPresent());
-   		Question q = oq.get();
-   		this.questionRepository.delete(q);
-   		assertEquals(1, this.questionRepository.count());
-   	}
-   
-   }
-   ```
-
-   리포지터리의 delete 메서드를 사용하여 데이터를 삭제했다. 데이터 건수가 삭제하기 전에 2였는데, 삭제한 후 1이 되었는지를 테스트했다(리포지터리의 count 메서드는 테이블 행의 개수를 리턴한다).
-
-2. 그리고 다시 question 테이블을 확인해 보면 다음과 같이 ID가 1인 행이 삭제되었음을 알 수 있다.
-
-   ![image-20250412153641239](./assets/image-20250412153641239.png)
-
-### 답변 데이터 저장하기
-
-1. 이번에는 답변 엔티티의 데이터를 생성하고 저장한다. SbbApplicationTests.java 파일을 열고 다음과 같이 수정한다.
-
-   ```java
-   package com.mysite.sbb;
-   
-   import java.time.LocalDateTime;
-   import java.util.List;
-   import java.util.Optional;
-   
-   import org.junit.jupiter.api.Test;
-   import org.springframework.beans.factory.annotation.Autowired;
-   import org.springframework.boot.test.context.SpringBootTest;
-   
-   import static org.junit.jupiter.api.Assertions.assertEquals;
-   import static org.junit.jupiter.api.Assertions.assertTrue;
-   
-   @SpringBootTest
-   class SbbApplicationTests {
-   	
-   	@Autowired
-   	private QuestionRepository questionRepository;
-   	
-   	@Autowired
-   	private AnswerRepository answerRepository;
-   
-   	@Test
-   	void testJpa() {
-   		Optional<Question> oq = this.questionRepository.findById(2);
-   		assertTrue(oq.isPresent());
-   		Question q = oq.get();
-   		
-   		Answer a = new Answer();
-   		a.setContent("네 자동으로 생성됩니다.");
-   		a.setQuestion(q);
-   		a.setCreateDate(LocalDateTime.now());
-   		this.answerRepository.save(a);
-   	}
-   
-   }
-   ```
-
-   질문 데이터를 저장할 때와 마찬가지로 답변 데이터를 저장할 때에도 리포지터리(여기서는 AnswerRepository)가 필요하므로 AnswerRepository의 객체를 @Autowired를 통해 주입했다. 답변을 생성하려면 질문이 필요하므로 우선 질문을 조회해야 한다. questionRepository의 findById 메서드를 통해 id가 2인 질문 데이터를 가져와 답변의 question 속성에 대입해 답변 데이터를 생성했다.
-
-2. DB에 값이 잘 들어갔는지 확인한다.
-
-   ![image-20250412154451974](./assets/image-20250412154451974.png)
-
-### 답변 데이터 조회하기
-
-답변 엔티티도 질문 엔티티와 마찬가지로 id 속성이 기본키이므로 값이 자동으로 생성된다. 질문 데이터를 조회할 때 findByID 메서드를 사용했듯이 id값을 활용해 데이터를 조회한다.
+이번에는 subject와 content를 함께 조회한다. SQL을 활용해 DB에서 두 개의 열(여기서는 엔티티의 속성)을 조회하기 위해서는 And 연산자를 사용한다. subject와 content 속성을 조회하기 위해 findBySubject와 마찬가지로 리포지터리에 findBySubjectAndContent 메서드를 추가해야 한다. 다음과 같이 QuestionRepository.java 파일을 수정한다.
 
 ```java
 package com.mysite.sbb;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface QuestionRepository extends JpaRepository<Question, Long> {
+	Question findBySubject(String subject);
+	Question findBySubjectAndContent(String subject, String content);
+}
+```
+
+그리고 테스트 코드를 다음과 같이 작성한다.
+
+```java
+package com.mysite.sbb;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import jakarta.transaction.Transactional;
+
+@SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional
+public class SbbApplicationTests_sql_select {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Test
+	void testJpa_findAll() {
+		List<Question> all = this.questionRepository.findAll();
+		assertEquals(2, all.size());
+		Question q = all.get(0);
+		assertEquals("sbb가 무엇인가요?", q.getSubject());
+	}
+	
+	@Test
+	void testJpa_findById() {
+		Optional<Question> oq = this.questionRepository.findById(1L);
+		if(oq.isPresent()) {
+			Question q = oq.get();
+			assertEquals("sbb가 무엇인가요?", q.getSubject());
+		}
+	}
+	
+	@Test
+	void testJpa_findBySubject() {
+		Question q = this.questionRepository.findBySubject("sbb가 무엇인가요?");
+		assertEquals(1, q.getId());
+	}
+	
+	@Test
+	void testJpa_findBySubjectAndContent() {
+		Question q = this.questionRepository.findBySubjectAndContent("sbb가 무엇인가요?", "sbb에 대해서 알고 싶습니다.");
+		assertEquals(1, q.getId());
+	}
+	
+}
+```
+
+```
+Hibernate: 
+    select
+        q1_0.id,
+        q1_0.content,
+        q1_0.create_date,
+        q1_0.subject 
+    from
+        question q1_0 
+    where
+        q1_0.subject=? 
+        and q1_0.content=?
+```
+
+where 문에 and 연산자가 사용되어 subject와 content 열을 조회하는 것을 확인할 수 있다.
+
+이렇듯 리포지터리의 메서드명은 데이터를 조회하는 쿼리문의 where 조건을 결정하는 역할을 한다. 여기서는 findBySubject, findBySubjectAndContent 두 메서드만 알아봤지만 상당히 많은 조합을 사용할 수 있다. 조합할 수 있는 메서드를 간단하게 표로 정리해 보았다.
+
+| SQL 연산자       | 리포지터리의 메서드 예                                       | 설명                                                         |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| And              | findBySubjectAndContent(String subject, String content)      | Subject, Content 열과 일치하는 데이터를 조회                 |
+| Or               | findBySubjectOrContent(String subject, String content)       | Subject열 또는 Content 열과 일치하는 데이터를 조회           |
+| Between          | findByCreateDateBetween(LocalDateTime fromDate, LocalDateTime toDate) | CreateDate 열의 데이터 중 정해진 범위 내에 있는 데이터를 조회 |
+| LessThan         | findByLessThan(Integer id)                                   | id 열에서 조건보다 작은 데이터를 조회                        |
+| GreaterThanEqual | findByIdGreaterThanEqual(Integer id)                         | id 열에서 조건보다 크거나 같은 데이터를 조회                 |
+| Like             | findBySubjectLike(String subject)                            | Subject 열에서 문자열 'subject'와 같은 문자열을 포함한 데이터를 조회 |
+| In               | findBySubjectIn(String[] subjects)                           | Subject 열의 데이터가 주어진 배열에 포함되는 데이터만 조회   |
+| OrderBy          | findBySubjectOrderByCreateDateAsc(String subject)            | Subject 열 중 조건에 일치하는 데이터를 조회하여 그 데이터를 반환할 때 CreateDate 열을 오름차순으로 정렬하여 반환 |
+
+##### findBySubjectLike 메서드
+
+이번에는 질문 엔티티의 subject 열 값들 중에 특정 문자열을 포함하는 데이터를 조회한다. SQL에서는 특정 문자열을 포함한 데이터를 열에서 찾을 때 Like를 사용한다. subject 열에서 특정 문자열을 포함하는 데이터를 찾기 위해 다음과 같이 findBySubjectLike 메서드를 리포지터리에 추가한다.
+
+```java
+package com.mysite.sbb;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface QuestionRepository extends JpaRepository<Question, Long> {
+	Question findBySubject(String subject);
+	Question findBySubjectAndContent(String subject, String content);
+	List<Question> findBySubjectLike(String subject);
+}
+```
+
+그리고 테스트 코드는 다음과 같이 수정한다.
+
+```java
+package com.mysite.sbb.test.question;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.mysite.sbb.Question;
+import com.mysite.sbb.QuestionRepository;
+
+import jakarta.transaction.Transactional;
+
+@SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional
+public class SbbApplicationTests_sql_select {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Test
+	void testJpa_findAll() {
+		List<Question> all = this.questionRepository.findAll();
+		assertEquals(2, all.size());
+		Question q = all.get(0);
+		assertEquals("sbb가 무엇인가요?", q.getSubject());
+	}
+	
+	@Test
+	void testJpa_findById() {
+		Optional<Question> oq = this.questionRepository.findById(1L);
+		if(oq.isPresent()) {
+			Question q = oq.get();
+			assertEquals("sbb가 무엇인가요?", q.getSubject());
+		}
+	}
+	
+	@Test
+	void testJpa_findBySubject() {
+		Question q = this.questionRepository.findBySubject("sbb가 무엇인가요?");
+		assertEquals(1, q.getId());
+	}
+	
+	@Test
+	void testJpa_findBySubjectAndContent() {
+		Question q = this.questionRepository.findBySubjectAndContent("sbb가 무엇인가요?", "sbb에 대해서 알고 싶습니다.");
+		assertEquals(1, q.getId());
+	}
+	
+	@Test
+	void testJpa_findBySubjectLike() {
+		List<Question> qList = this.questionRepository.findBySubjectLike("sbb%");
+		Question q = qList.get(0);
+		assertEquals("sbb가 무엇인가요?", q.getSubject());
+	}
+	
+}
+```
+
+findBySubjectLike 메서드를 사용할 때 데이터 조회를 위한 조건이 되는 문자열로 sbb%와 같이 %를 적어 주어야 한다. %는 표기하는 위치에 따라 의미가 달라진다. 아래 표를 살펴보자.
+
+| 표기 예 | 표기 위치에 따른 의미   |
+| ------- | ----------------------- |
+| sbb%    | 'sbb'로 시작하는 문자열 |
+| %sbb    | 'sbb'로 끝나는 문자열   |
+| %sbb%   | 'sbb'를 포함하는 문자열 |
+
+#### 질문 데이터 수정하기
+
+질문 엔티티의 데이터를 수정하는 테스트 코드를 작성한다.
+
+```java
+package com.mysite.sbb.test.question;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.mysite.sbb.Question;
+import com.mysite.sbb.QuestionRepository;
+
+import jakarta.transaction.Transactional;
+
+@SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Transactional
+public class SbbApplicationTests_sql_update {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Test
+	void testJpa_setSubject() {
+		Optional<Question> oq = this.questionRepository.findById(1L);
+		assertTrue(oq.isPresent());
+		Question q = oq.get();
+		q.setSubject("수정된 제목");
+		this.questionRepository.save(q);
+	}
+	
+}
+```
+
+질문 엔티티의 데이터를 조회한 다음, subject 속성을 '수정한 제목'이라는 값으로 수정했다. 변경된 질문을 DB에 저장하기 위해서 this.questionRepository.sava(q)와 같이 리포지터리의 save 메서드를 사용했다.
+
+테스트를 수행해 보면 다음과 같이 콘솔 로그에서 update 문이 실행되었음을 확인할 수 있다.
+
+```
+Hibernate: 
+    select
+        q1_0.id,
+        q1_0.content,
+        q1_0.create_date,
+        q1_0.subject 
+    from
+        question q1_0 
+    where
+        q1_0.id=?
+```
+
+그리고 SELECT * FROM QUESTION 쿼리문을 입력하고 실행해 question 테이블을 확인하면 subject의 값이 변경되었음을 알 수 있다.
+
+![image-20250412153257018](./assets/image-20250412153257018.png)
+
+#### 질문 데이터 삭제하기
+
+이어서 데이터를 삭제한다. 여기서는 첫 번째 질문을 삭제해 본다.
+
+```java
+package com.mysite.sbb.test.question;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -1501,11 +2370,60 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import com.mysite.sbb.Question;
+import com.mysite.sbb.QuestionRepository;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
-class SbbApplicationTests {
+class SbbApplicationTests_sql_delete {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+
+	@Test
+	void testJpa() {
+		assertEquals(2, this.questionRepository.count());
+		Optional<Question> oq = this.questionRepository.findById(1L);
+		assertTrue(oq.isPresent());
+		Question q = oq.get();
+		this.questionRepository.delete(q);
+		assertEquals(1, this.questionRepository.count());
+	}
+
+}
+```
+
+리포지터리의 delete 메서드를 사용하여 데이터를 삭제했다. 데이터 건수가 삭제하기 전에 2였는데, 삭제한 후 1이 되었는지를 테스트했다(리포지터리의 count 메서드는 테이블 행의 개수를 리턴한다).
+
+그리고 다시 question 테이블을 확인해 보면 다음과 같이 ID가 1인 행이 삭제되었음을 알 수 있다.
+
+![image-20250412153641239](./assets/image-20250412153641239.png)
+
+#### 답변 데이터 저장하기
+
+이번에는 답변 엔티티의 데이터를 생성하고 저장한다. SbbApplicationTests.java 파일을 열고 다음과 같이 수정한다.
+
+```java
+package com.mysite.sbb.test.answer;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import com.mysite.sbb.Answer;
+import com.mysite.sbb.AnswerRepository;
+import com.mysite.sbb.Question;
+import com.mysite.sbb.QuestionRepository;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest
+class SbbApplicationTests_sql_insert {
 	
 	@Autowired
 	private QuestionRepository questionRepository;
@@ -1515,18 +2433,67 @@ class SbbApplicationTests {
 
 	@Test
 	void testJpa() {
-		Optional<Answer> oa = this.answerRepository.findById(1);
-		assertTrue(oa.isPresent());
-		Answer a = oa.get();
-		assertEquals(2, a.getQuestion().getId());
+		Optional<Question> oq = this.questionRepository.findById(2L);
+		assertTrue(oq.isPresent());
+		Question q = oq.get();
+		
+		Answer a = new Answer();
+		a.setContent("네 자동으로 생성됩니다.");
+		a.setQuestion(q);
+		a.setCreateDate(LocalDateTime.now());
+		this.answerRepository.save(a);
 	}
 
 }
 ```
 
+질문 데이터를 저장할 때와 마찬가지로 답변 데이터를 저장할 때에도 리포지터리(여기서는 AnswerRepository)가 필요하므로 AnswerRepository의 객체를 @Autowired를 통해 주입했다. 답변을 생성하려면 질문이 필요하므로 우선 질문을 조회해야 한다. questionRepository의 findById 메서드를 통해 id가 2인 질문 데이터를 가져와 답변의 question 속성에 대입해 답변 데이터를 생성했다.
+
+DB에 값이 잘 들어갔는지 확인한다.
+
+![image-20250412154451974](./assets/image-20250412154451974.png)
+
+#### 답변 데이터 조회하기
+
+답변 엔티티도 질문 엔티티와 마찬가지로 id 속성이 기본키이므로 값이 자동으로 생성된다. 질문 데이터를 조회할 때 findByID 메서드를 사용했듯이 id값을 활용해 데이터를 조회한다.
+
+```java
+package com.mysite.sbb.test.answer;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.mysite.sbb.Answer;
+import com.mysite.sbb.AnswerRepository;
+import com.mysite.sbb.QuestionRepository;
+
+public class SbbApplicationTests_sql_select {
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Autowired
+	private AnswerRepository answerRepository;
+	
+	@Test
+	void testJpa() {
+		Optional<Answer> oa = this.answerRepository.findById(1L);
+		assertTrue(oa.isPresent());
+		Answer a = oa.get();
+		assertEquals(2, a.getQuestion().getId());
+	}
+	
+}
+```
+
 id값이 1인 답변을 조회했다. 그리고 조회한 답변과 연결된 질문의 id가 2인지도 조회해 보았다.
 
-### 답변 데이터를 통해 질문 데이터 찾기 vs 질문 데이터를 통해 답변 데이터 찾기
+#### 답변 데이터를 통해 질문 데이터 찾기 vs 질문 데이터를 통해 답변 데이터 찾기
 
 앞에서 살펴본 답변 엔티티의 question 속성을 이용하면 다음과 같은 메서드를 사용해 '답변에 연결된 질문'에 접근할 수 있다.
 
@@ -1541,7 +2508,7 @@ a는 답변 객체이고, a.getQuestion()은 답변에 연결된 질문 객체�
 그런데 반대의 경우도 가능할까? 즉, 질문 데이터에서 답변 데이터를 찾을 수 있을까? 다음과 같이 질문 엔티티에 정의한 answerList를 사용하면 해결할 수 있다.
 
 ```java
-package com.mysite.sbb;
+package com.mysite.sbb.test.answer;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -1550,6 +2517,11 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import com.mysite.sbb.Answer;
+import com.mysite.sbb.AnswerRepository;
+import com.mysite.sbb.Question;
+import com.mysite.sbb.QuestionRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -1565,7 +2537,7 @@ class SbbApplicationTests {
 
 	@Test
 	void testJpa() {
-		Optional<Question> oq = this.questionRepository.findById(2);
+		Optional<Question> oq = this.questionRepository.findById(2L);
 		assertTrue(oq.isPresent());
 		Question q = oq.get();
 		
@@ -1580,7 +2552,7 @@ class SbbApplicationTests {
 
 질문을 조회한 후 이 질문에 달린 답변 전체를 구하는 테스트 코드이다. id가 2인 질문 데이터에 답변 데이터를 1개 등록했으므로 이와 같이 코드를 작성해 확인할 수 있다.
 
-왜냐하면 QuestionRepository가 findById 메서드를 통해 Question 객체를 조회하고 나면 DB 세션이 끊어지기 때문이다.
+왜냐하면 QuestionRepository가 findById 메서드를 통해 Question 객체를 조회하고 나면 **DB 세션이 끊어지기 때문**이다.
 
 그래서 그 이후에 실행되는 q.getAnswerList() 메서드(Question 객체로부터 answer 리스트를 구하는 메서드)는 세션이 종료되어 오류가 발생한다. answerList는 앞서 q 객체를 조회할 때가 아니라 q.getAnswerList() 메서드를 호출하는 시점에 가져오기 때문에 이와 같이 오류가 발생한 것이다.
 
@@ -1588,50 +2560,7 @@ class SbbApplicationTests {
 
 사실 이 문제는 테스트 코드에서만 발생한다. 실제 서버에서 JPA 프로그램들을 실행할 때는 DB 세션이 종료되지 않아 이와 같은 오류가 발생하지 않는다.
 
-테스트 코드를 수행할 때 이런 오류를 방지할 수 있는 가장 간단한 방법은 다음과 같이 @Transactional 어노테이션을 사용하는 것이다. @Transactional 어노테이션을 사용하면 메서드가 종료될 때까지 DB 세션이 유지된다. 코드를 수정해본다.
-
-```java
-package com.mysite.sbb;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-
-import jakarta.transaction.Transactional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-@SpringBootTest
-class SbbApplicationTests {
-	
-	@Autowired
-	private QuestionRepository questionRepository;
-	
-	@Autowired
-	private AnswerRepository answerRepository;
-
-	@Transactional
-	@Test
-	void testJpa() {
-		Optional<Question> oq = this.questionRepository.findById(2);
-		assertTrue(oq.isPresent());
-		Question q = oq.get();
-		
-		List<Answer> answerList = q.getAnswerList();
-		
-		assertEquals(1, answerList.size());
-		assertEquals("네 자동으로 생성됩니다.", answerList.get(0).getContent());
-	}
-
-}
-```
-
-메서드에 @Transactional 어노테이션을 추가하면 오류 없이 잘 수행된다.
+테스트 코드를 수행할 때 이런 오류를 방지할 수 있는 가장 간단한 방법은 다음과 같이 @Transactional 어노테이션을 사용하는 것이다. @Transactional 어노테이션을 사용하면 메서드가 종료될 때까지 DB 세션이 유지된다. 메서드에 @Transactional 어노테이션을 추가하면 오류 없이 잘 수행된다.
 
 ## 도메인별로 분류하기
 
@@ -1778,21 +2707,27 @@ package com.mysite.sbb.question;
 import java.util.List;
 
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
+import org.springframework.ui.Model;
 import lombok.RequiredArgsConstructor;
+
 
 @RequiredArgsConstructor
 @Controller
 public class QuestionController {
-	
-	private final QuestionRepository questionRepository;
 
+	private final QuestionRepository questionRepository;
+	
 	@GetMapping("/question/list")
+	@ResponseBody
 	public String list(Model model) {
+
 		List<Question> questionList = this.questionRepository.findAll();
+
 		model.addAttribute("questionList", questionList);
+
 		return "question_list";
 	}
 	
@@ -1802,6 +2737,150 @@ public class QuestionController {
 @RequiredArgsConstructor 어노테이션의 생성자 방식으로 questionRepository 객체를 주입했다. @RequiredArgsConstructor는 롬복이 제공하는 어노테이션으로, final이 붙은 속성을 포함하는 생성자를 자동으로 만들어 주는 역할을 한다. 따라서 스프링 부트가 내부적으로 QuestionController를 생성할 때 롬복으로 만들어진 생성자에 의해 questionRepository 객체가 자동으로 주입된다.
 
 그리고 QuestionRepository의 findAll 메서드를 사용하여 질문 목록 데이터인 questionList를 생성하고 Model 객체에 'questionList'라는 이름으로 저장했다. 여기서 Model 객체는 자바 클래스와 템플릿 간의 연결 고리 역할을 한다. Model 객체에 값을 담아 두면 템플릿에서 그 값을 사용할 수 있다. Model 객체는 따로 생성할 필요 없이 컨트롤러의 메서드에 매개변수로 지정하기만 하면 스프링 부트가 자동으로 Model 객체를 생성한다.
+
+#### 전체 코드 분석
+
+**`package` 선언**
+ 이 클래스가 속한 패키지를 나타냄.
+
+```java
+package com.mysite.sbb.question;
+```
+
+- 패키지명: `com.mysite.sbb.question`
+- 보통 `com.회사명.프로젝트명.도메인` 형태.
+- 이 구조로 패키지를 구분하면 기능 단위로 코드를 관리하기 쉬움.
+
+**List 클래스 import**
+
+```java
+import java.util.List;
+```
+
+- `java.util` 패키지의 `List` 인터페이스를 가져옴.
+- 여러 개의 질문(`Question`) 객체를 저장할 때 사용.
+
+**Spring MVC Controller 지정 어노테이션**
+
+```java
+import org.springframework.stereotype.Controller;
+```
+
+* 이 클래스를 **웹 요청을 처리하는 컨트롤러**로 등록.
+* 스프링이 이 클래스를 Bean으로 자동 등록하게 해줌.
+* 내부적으로 `@Component`의 확장이다.
+
+**HTTP GET 요청을 매핑할 때 사용되는 어노테이션**
+
+```java
+import org.springframework.web.bind.annotation.GetMapping;
+```
+
+* ex) `@GetMapping("/question/list")`는 `/question/list` URL에 대한 GET 요청을 처리.
+
+**HTTP 응답 body에 직접 내용을 리턴하게 함**
+
+```java
+import org.springframework.web.bind.annotation.ResponseBody;
+```
+
+* 기본적으로 `@Controller`는 뷰 이름을 반환하지만,
+* `@ResponseBody`를 붙이면 **문자열 자체나 객체가 그대로 응답 body로 반환**됨.
+
+**스프링 MVC의 모델 객체**
+
+```java
+import org.springframework.ui.Model;
+```
+
+* 컨트롤러에서 뷰로 데이터를 넘겨줄 때 사용.
+* 내부적으로 `request.setAttribute()`처럼 작동.
+
+**Lombok 어노테이션**
+
+```java
+import lombok.RequiredArgsConstructor;
+```
+
+* `final`이 붙은 모든 필드를 매개변수로 갖는 **생성자**를 자동 생성.
+* 즉, `private final QuestionRepository questionRepository;` 이 필드를 위한 생성자가 자동 생성됨.
+* DI(의존성 주입)에 필요한 생성자를 손으로 만들 필요 없음.
+
+#### 클래스 선언부
+
+**클래스에 `@RequiredArgsConstructor`와 `@Controller`를 동시에 붙임**
+
+```java
+@RequiredArgsConstructor
+@Controller
+public class QuestionController {
+```
+
+- 이 클래스는 **웹 요청을 처리**하는 컨트롤러이며,
+
+- 내부에서 사용되는 `final` 필드에 대해 생성자를 자동 생성해줌.
+
+- 즉, `QuestionRepository`를 스프링이 자동으로 주입함.
+
+#### 필드 선언
+
+**의존성 주입 대상 필드**
+
+```java
+private final QuestionRepository questionRepository;
+```
+
+- `final`은 한 번 초기화되면 변경 불가능.
+
+- 생성자 주입을 강제하기 위해 `final`로 선언.
+
+- `@RequiredArgsConstructor`에 의해 자동 생성된 생성자에서 이 필드가 초기화됨.
+
+- 실제 객체는 스프링이 관리하는 Bean에서 주입됨.
+
+#### 핸들러 메서드
+
+**HTTP GET 요청을 처리하는 메서드**
+
+```java
+@GetMapping("/question/list")
+@ResponseBody
+public String list(Model model) {
+```
+
+- URL: `/question/list`
+
+- `@ResponseBody` → 반환값 `"question_list"`를 **그대로 브라우저에 문자열로 출력**함.
+
+- 그런데 문제가 있음 → *실제로는 뷰 이름을 반환하려는 의도 같은데, `@ResponseBody` 때문에 뷰가 렌더링되지 않음.*
+
+**DB에서 질문 리스트를 모두 조회**
+
+```java
+List<Question> questionList = this.questionRepository.findAll();
+```
+
+* JPA의 기본 메서드 `findAll()` 호출
+* 결과는 `List<Question>` 타입
+* 내부적으로 `SELECT * FROM question` 같은 쿼리가 실행됨
+
+**조회한 데이터를 뷰로 전달**
+
+```java
+model.addAttribute("questionList", questionList);
+```
+
+- `Model` 객체에 `questionList`라는 이름으로 데이터 저장
+- JSP, Thymeleaf 등 뷰 템플릿에서 `${questionList}`로 접근 가능
+
+**뷰 이름 반환**
+
+```java
+return "question_list";
+```
+
+* `"question_list"`는 보통 `src/main/resources/templates/question_list.html` 같은 파일을 의미
+* Thymeleaf 템플릿을 사용할 경우 이 파일이 렌더링됨
 
 ### 데이터를 화면에 출력하기
 
@@ -1953,7 +3032,7 @@ public class MainController {
 		return "안녕하세요 sbb에 오신 것을 환영한다.";
 	}
 	
-	@GetMapping("/")
+	@GetMapping("/list")
 	public String root() {
 		return "redirect:/question/list";
 	}
@@ -2734,23 +3813,488 @@ question_list.html 템플릿을 다음과 같이 변경하여 layout.html을 상
 */templates/question_list.html*
 
 ```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+	<title>Document</title>
+</head>
+<body>
+	<div class="container my-3">
+		<table class="table">
+			<thead class="table-dark">
+				<tr>		
+					<th>번호</th>	
+					<th>제목</th>
+					<th>작성일시</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr th:each="question, loop : ${questionList}">
+					<td th:text="${loop.count}"></td>
+					<td>
+						<a th:href="@{|/question/detail/${question.id}|}" th:text="${question.subject}"></a>
+					</td>
+					<td th:text="${#temporals.format(question.createDate, 'yyyy-MM-dd HH:mm')}"></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>
 ```
 
+layout.html 템플릿을 상속하려고 `<html layout:decorate="~{layout}">`을 사용했다. 타임리프의 layout:decorate 속성은 템플릿의 레이아웃(부모 템플릿, 여기서는 layout.html)으로 사용할 템플릿을 설정한다. 속성값이 ~{layout}이 바로 layout.html 파일을 의미한다.
 
+부모 템플릿인 layout.html에는 다음과 같은 내용이 있었다.
+
+```html
+<!-- 기본 템플릿 안에 삽입될 내용 Start -->
+<th:block layout:fragment="content"></th:block>
+<!-- 기본 템플릿 안에 삽입될 내용 End -->
+```
+
+부모 템플릿에 작성된 이 부분을 자식 템플릿의 내용으로 적용될 수 있도록 다음과 같이 사용했다.
+
+```html
+<!DOCTYPE html>
+<html layout:decorate="~{layout}" lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+	<title>Document</title>
+</head>
+<body>
+	<div layout:fragment="content" class="container my-3">
+		<table class="table">
+			<thead class="table-dark">
+				<tr>		
+					<th>번호</th>	
+					<th>제목</th>
+					<th>작성일시</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr th:each="question, loop : ${questionList}">
+					<td th:text="${loop.count}"></td>
+					<td>
+						<a th:href="@{|/question/detail/${question.id}|}" th:text="${question.subject}"></a>
+					</td>
+					<td th:text="${#temporals.format(question.createDate, 'yyyy-MM-dd HH:mm')}"></td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>
+```
+
+layout.html 템플릿을 상속하려고 `<html layout:decorate="~{layout}">`을 사용했다. 타임리프의 layout:decorate 속성은 템플릿의 레이아웃(부모 템플릿, 여기서는 layout.html)으로 사용할 템플릿을 설정한다. 속성값인 ~{layout}이 바로 layout.html 파일을 의미한다.
+
+부모 템플릿인 layout.html에는 다음과 같은 내용이 있었다.
+
+```html
+<!-- 기본 템플릿 안에 삽입될 내용 Start -->
+<th:block layout:fragment="content"></th:block>
+<!-- 기본 템플릿 안에 삽입될 내용 End -->
+```
+
+부모 템플릿에 작성된 이 부분을 자식 템플릿의 내용으로 적용될 수 있도록 다음과 같이 사용했다.
+
+```html
+<div class="card my-3">
+    <div class="card-body">
+        <div class="card-text" style="white-space: pre-line;" th:text="${question.content}"></div>
+        <div class="d-flex justify-content-end">
+            <div class="badge bg-light text-dark p-2 text-start">
+                <div th:text="${#temporals.format(question.createDate, 'yyyy-MM-dd HH:mm')}"></div>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+이렇게 하면 부모 템플릿의 th:block 요소의 내용이 자식 템플릿의 div 요소의 내용으로 교체된다.
 
 #### question_detail.html에 템플릿 상속하기
 
+question_detail.html도 마찬가지 방법으로 layout.html을 상속해 보자.
+
+*/templates/question_detail.html*
+
+```html
+<!DOCTYPE html>
+<html layout:decorate="~{layout}" lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+	<link rel="stylesheet" type="text/css" th:href="@{/style.css}">
+	<title>Document</title>
+</head>
+<body>
+	<div layout:fragment="content" class="container my-3">
+		<!-- 질문 -->
+		<h2 class="border-bottom py-2" th:text="${question.subject}"></h2>
+		<div class="card my-3">
+			<div class="card-body">
+				<div class="card-text" style="white-space: pre-line;" th:text="${question.content}"></div>
+				<div class="d-flex justify-content-end">
+					<div class="badge bg-light text-dark p-2 text-start">
+						<div th:text="${#temporals.format(question.createDate, 'yyyy-MM-dd HH:mm')}"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- 답변 개수 표시 -->
+		<h5 class="border-bottom my-3 py-2"
+			th:text="|${#lists.size(question.answerList)}개의 답변이 있습니다.|"></h5>
+		<!-- 답변 반복 시작 -->
+		<div class="card my-3" th:each="answer : ${question.answerList}">
+			<div class="card-body">
+				<div class="card-text" style="white-space: pre-line;" th:text="${answer.content}"></div>
+				<div class="d-flex justify-content-end">
+					<div class="badge bg-light text-dark p-2 text-start">
+						<div th:text="${#temporals.format(answer.createDate, 'yyyy-MM-dd HH:mm')}"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- 답변 반복 끝 -->
+		<!-- 답변 작성 -->
+		<form th:action="@{|/answer/create/${question.id}|}" method="post" class="my-3">
+			<textarea name="content" id="content" rows="10" class="form-control"></textarea>
+			<input type="submit" value="답변 등록" class="btn btn-primary my-2">
+		</form>	
+	</div>
+</body>
+</html>
+```
+
+question_list.html 템플릿과 동일한 방법으로 layout.html 템플릿을 상속하려고 `<html layout:decorate="~{layout}">`을 사용했다.
+
+템플릿을 상속한 후, 질문 목록 또는 질문 상세 페이지를 확인해 보자. 화면에 보여 지는 것은 동일하지만 표준 HTML 구조로 변경되었다. 크롬 브라우저에서 마우스 오른쪽 버튼을 클릭하고 [페이지 소스 보기]를 클릭하면 HTML 코드를 확인할 수 있다.
+
 ## 질문 등록 기능 추가하기
+
+이번에는 질문을 등록하는 기능을 만들어 보자. 질문 목록에 질문 등록을 위한 버튼을 추가하고 질문을 등록할 수 있는 화면을 만들어 질문 등록 기능을 완성해 보자.
 
 ### 질문 등록 버튼과 화면 만들기
 
+질문 등록을 할 수 있도록 먼저 질문 목록 페이지에 질문 등록하기 버튼을 만들어야 한다. question_list.html 파일을 열고 다음과 같이 한 줄의 코드를 추가하여 질문 목록 아래에 버튼을 생성하다.
+
+`/templates/question_list.html`
+
+```html
+<!DOCTYPE html>
+<html layout:decorate="~{layout}" lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Document</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+    <!-- sbb CSS -->
+     <link rel="stylesheet" href="text/css" th:href="@{/style.css}">
+     <title>Hello, sbb!</title>
+</head>
+<body>
+    <!-- 기본 템플릿 안에 삽입될 내용 Start -->
+    <th:block layout:fragment="content"></th:block>
+    <!-- 기본 템플릿 안에 삽입될 내용 End -->
+    <div layout:fragment="content" class="container my-3">
+        <table class="table">
+
+        </table>
+        <a th:href="@{/question/create}" class="btn btn-primary">질문 등록하기</a>
+    </div>
+</body>
+</html>
+```
+
+`<a> ... </a>` 요소를 추가하여 부트스트랩의 btn btn-primary 클래스를 적용하면 다음과 같이 화면에 버튼 형태로 보인다.
+
+질문 등록하기 버튼을 한번 클릭해 보자. 아마 /question/create URL이 호출될 것이다. 하지만 현 상태에서는 404 오류가 발생한다.
+
 #### URL 매핑하기
+
+이제 404 오류가 발생하면 무엇을 해야 하는지 잘 알 것이다. QuestionController에 /question/create에 해당하는 URL 매핑을 추가하자.
+
+*/question/QuestionController.java*
+
+```java
+package com.mysite.sbb.question;
+
+import java.util.List;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import lombok.RequiredArgsConstructor;
+
+@RequestMapping("/question")
+@RequiredArgsConstructor
+@Controller
+public class QuestionController {
+	
+	private final QuestionService questionService;
+
+	@GetMapping("/list")
+	public String list(Model model) {
+		List<Question> questionList = this.questionService.getList();
+		model.addAttribute("questionList", questionList);
+		System.out.println("questionList : " + questionList);
+		return "question_list";
+	}
+	
+	@GetMapping(value = "/detail/{id}")
+	public String detail(Model model, @PathVariable("id") Integer id) {
+		Question question = this.questionService.getQuestion(id);
+		model.addAttribute("question", question);
+		System.out.println("question : " + question);
+		return "question_detail";
+	}
+
+	@GetMapping("/create")
+	public String questionCreate() {
+		return "question_form";
+	}
+	
+}
+```
+
+질문 등록하기 버튼을 통한 /question/create 요청은 GET 요청에 해당하므로 @GetMapping 어노테이션을 사용했다. questionCreate 메서드는 question_form 템플릿을 출력한다.
 
 #### 템플릿 만들기
 
+1. 질문 등록 화면을 만들기 위해 templates에 question_form.html 파일을 생성하고 다음 내용을 작성해 보자.
+
+   */templates/question_form.html*
+
+   ```html
+   <!DOCTYPE html>
+   <html layout:decorate="~{layout}" lang="en">
+   <head>
+       <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Document</title>
+   </head>
+   <body>
+       <div layout:fragment="content" class="container">
+           <h5 class="my-3 border-bottom pb-2">질문 등록</h5>
+           <form th:action="@{/question/create}" method="post">
+               <div class="mb-3">
+                   <label for="subject" class="form-label">제목</label>
+                   <input type="text" name="subject" id="subject" class="form-control">
+               </div>
+               <div class="mb-3">
+                   <label for="content" class="form-label">내용</label>
+                   <textarea name="content" id="content" class="form-control" rows="10"></textarea>
+               </div>
+               <input type="submit" value="저장하기" class="btn btn-primary my-2">
+           </form>
+       </div>
+   </body>
+   </html>
+   ```
+
+   이와 같이 제목과 내용을 입력하여 질문을 등록할 수 있는 템플릿을 작성했다.
+
+   템플릿에는 제목과 내용을 입력할 수 있는 텍스트 창을 추가했다. 제목은 일반적인 input 텍스트 창을 사용하고 내용은 글자 수에 제한이 없는 textarea 창을 사용했다. 그리고 입력한 내용을 /question/create URL로 post 방식을 이용해 전송할 수 있도록 form과 버튼을 추가했다.
+
+2. 이제 질문 목록 화면에서 질문 등록하기 버튼을 클릭하면 다음 화면이 나타날 것이다.
+
+   하지만 이 화면에서 질문과 내용을 입력하고 저장하기 버튼을 누르면 405 오류가 발생한다. 405 오류는 'Method Not Allowed'라는 의미로, /question/create URL을 POST 방식으로는 처리할 수 없음을 나타낸다.
+
+3. POST 요청을 처리할 수 있도록 다음과 같이 QuestionController를 수정해 보자.
+
+   */question/QuestionController.java*
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import java.util.List;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.ui.Model;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.PathVariable;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestParam;
+   
+   import lombok.RequiredArgsConstructor;
+   import org.springframework.web.bind.annotation.PostMapping;
+   
+   @RequestMapping("/question")
+   @RequiredArgsConstructor
+   @Controller
+   public class QuestionController {
+   	
+   	private final QuestionService questionService;
+   
+   	@GetMapping("/list")
+   	public String list(Model model) {
+   		List<Question> questionList = this.questionService.getList();
+   		model.addAttribute("questionList", questionList);
+   		System.out.println("questionList : " + questionList);
+   		return "question_list";
+   	}
+   	
+   	@GetMapping(value = "/detail/{id}")
+   	public String detail(Model model, @PathVariable("id") Integer id) {
+   		Question question = this.questionService.getQuestion(id);
+   		model.addAttribute("question", question);
+   		System.out.println("question : " + question);
+   		return "question_detail";
+   	}
+   
+   	@GetMapping("/create")
+   	public String questionCreate() {
+   		return "question_form";
+   	}
+   
+   	@PostMapping("/create")
+   	public String questionCreate(@RequestParam(value="subject") String subject,
+                                    @RequestParam(value="content") String content) {
+   		// TODO : 질문을 저장한다.
+   		return "redirect:/question/list";	// 질문 저장 후 질문 목록으로 이동
+   	}
+   	
+   }
+   ```
+
+   POST 방식으로 요청한 /question/create URL을 처리하도록 @PostMapping 어노테이션을 지정한 questionCreate 메서드를 추가했다. 메서드명은 @GetMapping에서 사용한 questionCreate 메서드명과 동일하게 사용할 수 있다(단, 매개변수의 형태가 다른 경우에 가능하다).
+
+   questionCreate 메서드는 화면에서 입력한 제목(subject)과 내용(content)을 매개변수로 받는다. 이때 질문 등록 템플릿(question_form.html)에서 입력 항목으로 사용한 subject, content의 이름과 RequestParam의 value값이 동일해야 함을 기억하자. 그래야 입력 항목의 값을 제대로 얻을 수 있다.
+
+   그런데 여기서는 일단 질문 데이터를 저장하는 작업은 잠시 뒤로 미루고 저장하기 버튼을 클릭해 질문이 저장되면 질문 목록 페이지로 이동하는 것까지 완성해 보았다.
+
 #### 서비스 수정하기
 
+1. 앞서 잠시 미룬 작업을 진행해 보자. 질문 데이터를 저장하기 위해 QuestionService.java를 다음과 같이 수정해 보자.
+
+   */question/QuestionService.java*
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import java.time.LocalDateTime;
+   import java.util.List;
+   import java.util.Optional;
+   
+   import com.mysite.sbb.DataNotFoundException;
+   
+   import org.springframework.stereotype.Service;
+   
+   import lombok.RequiredArgsConstructor;
+   
+   @RequiredArgsConstructor
+   @Service
+   public class QuestionService {
+   	
+   	private final QuestionRepository questionRepository;
+   	
+   	public List<Question> getList() {
+   		
+   		return this.questionRepository.findAll();
+   		
+   	}
+   	
+   	public Question getQuestion(Integer id) {
+   		Optional<Question> question = this.questionRepository.findById(id);
+   		System.out.println("question : " + question);
+   		if(question.isPresent()) {
+   			return question.get();
+   		} else {
+   			throw new DataNotFoundException("question not found");
+   		}
+   	}
+   
+   	public void create(String subject, String content) {
+   		Question q = new Question();
+   		q.setSubject(subject);
+   		q.setContent(content);
+   		q.setCreateDate(LocalDateTime.now());
+   		this.questionRepository.save(q);
+   	}
+   
+   }
+   ```
+
+   제목(subject)과 내용(content)을 입력받아 이를 질문으로 저장하는 create 메서드를 만들었다.
+
+2. 다시 QuestionController.java로 돌아가 이 서비스를 사용할 수 있도록 다음과 같이 수정해 보자.
+
+   */question/QuestionController.java*
+
+   ```java
+   package com.mysite.sbb.question;
+   
+   import java.util.List;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.ui.Model;
+   import org.springframework.web.bind.annotation.GetMapping;
+   import org.springframework.web.bind.annotation.PathVariable;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestParam;
+   
+   import lombok.RequiredArgsConstructor;
+   import org.springframework.web.bind.annotation.PostMapping;
+   
+   @RequestMapping("/question")
+   @RequiredArgsConstructor
+   @Controller
+   public class QuestionController {
+   	
+   	private final QuestionService questionService;
+   
+   	@GetMapping("/list")
+   	public String list(Model model) {
+   		List<Question> questionList = this.questionService.getList();
+   		model.addAttribute("questionList", questionList);
+   		System.out.println("questionList : " + questionList);
+   		return "question_list";
+   	}
+   	
+   	@GetMapping(value = "/detail/{id}")
+   	public String detail(Model model, @PathVariable("id") Integer id) {
+   		Question question = this.questionService.getQuestion(id);
+   		model.addAttribute("question", question);
+   		System.out.println("question : " + question);
+   		return "question_detail";
+   	}
+   
+   	@GetMapping("/create")
+   	public String questionCreate() {
+   		return "question_form";
+   	}
+   
+   	@PostMapping("/create")
+   	public String questionCreate(@RequestParam(value="subject") String subject, 
+   								 @RequestParam(value="content") String content) {
+   		this.questionService.create(subject, content);
+   		return "redirect:/question/list";	// 질문 저장 후 질문 목록으로 이동
+   	}
+   	
+   }
+   ```
+
+   TODO 주석문 대신 QuestionService의 create 메서드를 호출하여 질문 데이터(subject, content)를 저장하는 코드를 작성했다.
+
+   이렇게 수정하고 질문을 작성하고 저장하면 잘 동작하는 것을 확인할 수 있다. 질문 등록 화면에서 다음과 같이 질문과 내용을 입력한 후에 저장하기 버튼을 클릭하면 질문이 저장되고 질문 목록 화면으로 이동하는 것을 확인할 수 있다.
+
 ### 폼 활용하기
+
+
 
 #### Spring Boot Validation 라이브러리 설치하기
 
