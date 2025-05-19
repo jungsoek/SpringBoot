@@ -1,24 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <table>
-        <thead>
-            <tr>			
-                <th>제목</th>
-                <th>작성일시</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="question : ${questionList}">
-                <td th:text="${question.subject}"></td>
-                <td th:text="${question.createDate}"></td>
-            </tr>
-        </tbody>
-    </table>
-</body>
+<html layout:decorate="~{layout}" lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+        <title>Document</title>
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" type="text/css" th:href="@{/bootstrap.min.css}">
+        <!-- sbb CSS -->
+        <link rel="stylesheet" href="text/css" th:href="@{/style.css}">
+        <title>Hello, sbb!</title>
+    </head>
+    <body>
+        <!-- 기본 템플릿 안에 삽입될 내용 Start -->
+        <th:block layout:fragment="content"></th:block>
+        <!-- 기본 템플릿 안에 삽입될 내용 End -->
+        <div layout:fragment="content" class="container my-3">
+            <table class="table">
+
+            </table>
+            <a th:href="@{/question/create}" class="btn btn-primary">질문 등록하기</a>
+        </div>
+    </body>
 </html>

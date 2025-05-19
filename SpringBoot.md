@@ -3249,33 +3249,35 @@ public class QuestionController {
    import java.util.List;
    import java.util.Optional;
    
-   import com.mysite.sbb.DataNotFoundException;
-   
    import org.springframework.stereotype.Service;
+   
+   import com.mysite.sbb.DataNotFoundException;
    
    import lombok.RequiredArgsConstructor;
    
    @RequiredArgsConstructor
    @Service
    public class QuestionService {
-   	
-   	private final QuestionRepository questionRepository;
-   	
-   	public List<Question> getList() {
-   		
-   		return this.questionRepository.findAll();
-   		
-   	}
-   	
-   	public Question getQuestion(Integer id) {
-   		Optional<Question> question = this.questionRepository.findById(id);
-   		System.out.println("question : " + question);
-   		if(question.isPresent()) {
-   			return question.get();
-   		} else {
-   			throw new DataNotFoundException("question not found");
-   		}
-   	}
+       
+       private final QuestionRepository questionRepository;
+   
+       public List<Question> getList() {
+   
+           return this.questionRepository.findAll();
+   
+       }
+   
+       public Question getQuestion(Long id) {
+           Optional<Question> question = this.questionRepository.findById(id);
+   
+           System.out.println("question : " + question);
+   
+           if(question.isPresent()) {
+               return question.get();
+           } else {
+               throw new DataNotFoundException("question not found");
+           }
+       }
    
    }
    ```
@@ -3294,12 +3296,12 @@ public class QuestionController {
    
    @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "entity not found")
    public class DataNotFoundException extends RuntimeException {
-   	
-   	private static final long serialVersionUID = 1L;
-   	public DataNotFoundException(String message) {
-   		super(message);
-   	}
-   	
+       
+       private static final long serialVersionUID = 1L;
+       public DataNotFoundException(String message) {
+           super(message);
+       }
+   
    }
    ```
 
@@ -3315,33 +3317,40 @@ public class QuestionController {
    import java.util.List;
    
    import org.springframework.stereotype.Controller;
-   import org.springframework.ui.Model;
    import org.springframework.web.bind.annotation.GetMapping;
    import org.springframework.web.bind.annotation.PathVariable;
+   import org.springframework.web.bind.annotation.ResponseBody;
    
+   import org.springframework.ui.Model;
    import lombok.RequiredArgsConstructor;
+   
    
    @RequiredArgsConstructor
    @Controller
    public class QuestionController {
-   	
-   	private final QuestionService questionService;
    
+   	private final QuestionService questionService;
+   	
    	@GetMapping("/question/list")
+   	@ResponseBody
    	public String list(Model model) {
+   
    		List<Question> questionList = this.questionService.getList();
+   
    		model.addAttribute("questionList", questionList);
+   
    		System.out.println("questionList : " + questionList);
+   
    		return "question_list";
    	}
-   	
+   
    	@GetMapping(value = "/question/detail/{id}")
-   	public String detail(Model model, @PathVariable("id") Integer id) {
+   	public String detail(Model model, @PathVariable("id") Long id) {
    		Question question = this.questionService.getQuestion(id);
-   		model.addAttribute("question", question);
    		System.out.println("question : " + question);
    		return "question_detail";
    	}
+   	
    	
    }
    ```
@@ -3409,7 +3418,7 @@ public class QuestionController {
 	}
 	
 	@GetMapping(value = "/detail/{id}")
-	public String detail(Model model, @PathVariable("id") Integer id) {
+	public String detail(Model model, @PathVariable("id") Long id) {
 		Question question = this.questionService.getQuestion(id);
 		model.addAttribute("question", question);
 		System.out.println("question : " + question);
@@ -3484,7 +3493,7 @@ public class AnswerController {
 	private final QuestionService questionService;
 	
 	@PostMapping("/create/{id}")
-	public String createAnswer(Model model, @PathVariable("id") Integer id, @RequestParam(value="content") String content) {
+	public String createAnswer(Model model, @PathVariable("id") Long id, @RequestParam(value="content") String content) {
 		
 		Question question = this.questionService.getQuestion(id);
 		// TODO : 답변 저장 기능
@@ -3564,7 +3573,7 @@ public class AnswerController {
        private final AnswerService answerService;
    	
    	@PostMapping("/create/{id}")
-   	public String createAnswer(Model model, @PathVariable("id") Integer id, @RequestParam(value="content") String content) {
+   	public String createAnswer(Model model, @PathVariable("id") Long id, @RequestParam(value="content") String content) {
    		
    		Question question = this.questionService.getQuestion(id);
    		this.answerService.create(question, content);

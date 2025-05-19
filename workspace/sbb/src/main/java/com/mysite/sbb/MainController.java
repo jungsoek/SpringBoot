@@ -13,6 +13,7 @@ public class MainController {
 	}
 
 	@GetMapping("/list")
+	@ResponseBody
 	public String root() {
 		return "redirect:/question/list";
 	}
